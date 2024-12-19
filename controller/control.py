@@ -1,5 +1,7 @@
 from typing import TypedDict
 from system import System
+import time
+import asyncio
 
 class TrapezoidalProfile(TypedDict):
     MAX_VELOCITY: float
@@ -57,3 +59,21 @@ def pid_control(setpoint: int, measured: int, pid: PID):
 
     # Clamp output to PWM range (0-100%)
     return max(0, min(100, output))
+
+
+
+def loop_until(fn: callable, condition: callable, tick_speed: int):
+    """Loops until a condition is met."""
+
+    while not condition():
+        if fn() == True:
+            break
+        time.sleep(tick_speed / 1000)  # Convert to seconds
+
+async def async_loop_until(fn: callable, condition: callable, tick_speed: int):
+    """Loops until a condition is met."""
+
+    while not condition():
+        if fn() == True:
+            break
+        await asyncio.sleep(tick_speed / 1000)  # Convert to seconds

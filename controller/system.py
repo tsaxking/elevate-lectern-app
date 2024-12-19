@@ -1,7 +1,7 @@
 from motor import Motor
 import RPi.GPIO as GPIO
 import asyncio
-from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalProfile
+from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalProfile, loop_until
 from typing import TypedDict, Any
 import json
 from potentiometer import Potentiometer
@@ -23,7 +23,6 @@ COMMANDS = {
 TARGET_RANGE = 0.05 # The range of the target position that is considered "reached"
 
 class SystemConfig(TypedDict):
-    motor: Motor
     position_pin: int
     tick_speed: int
     max_limit_pin: int
@@ -172,26 +171,22 @@ class System:
             'tick_speed': self.tick_speed
         }
 
-        while abs(desired_position - self.get_position()) > TARGET_RANGE:
+        def condition():
             if self.force_stop:
-                self.force_stop = False
-                break
-
-
-            # If it surpasses the target position, stop
+                return True
             if current < desired_position and self.get_position() > desired_position:
-                break
-
+                return True
             if current > desired_position and self.get_position() < desired_position:
-                break
-
+                return True
+            return abs(desired_position - self.get_position()) < TARGET_RANGE
+        
+        def loop():            
             desired_velocity = trapezoidal_velocity_control(
                 current_pos=self.get_position(),
                 target_pos=desired_position,
                 current_vel=self.velocity,
                 profile=profile
             )
-
             # If it's at the constant velocity phase, use PID control
             # Otherwise, use the trapezoidal profile
             pwm_output = pid_control(
@@ -203,12 +198,15 @@ class System:
             # If it's in motion and hits the limit in that direction, stop
             if pwm_output < 0 and self.min_on():
                 self.stop()
-                break
+                return True
             if pwm_output > 0 and self.max_on():
                 self.stop()
-                break
+                return True
 
             self.motor.set_speed(pwm_output)
+            return False
+
+        loop_until(loop, condition, self.tick_speed)
 
     def move(self, speed: float):
         """Moves the system at the specified speed."""
