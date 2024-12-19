@@ -52,8 +52,6 @@ class System:
         self.main_down_pin = Potentiometer(config['down_pin'])
         self.secondary_up_pin = Potentiometer(config['secondary_up_pin'])
         self.secondary_down_pin = Potentiometer(config['secondary_down_pin'])
-        # self.up_pin = config['up_pin']
-        # self.down_pin = config['down_pin']
         self.log_state = config['log_state']
 
         GPIO.setmode(GPIO.BCM)
