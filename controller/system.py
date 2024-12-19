@@ -1,7 +1,7 @@
 from motor import Motor
 import RPi.GPIO as GPIO
 import asyncio
-from control import trapezoidal_velocity_control, pid_control, PID
+from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalProfile
 from typing import TypedDict
 import json
 
@@ -57,11 +57,11 @@ class System:
         asyncio.create_task(self._command_loop())
 
     def get_position(self) -> float:
-        """Returns the current position of the system."""
+        """Returns the normalized current position of the system."""
         
-        min = self.min
+        min = self.get_min()
         pos = GPIO.input(self.position_pin) - min
-        max = self.max - min
+        max = self.get_max() - min
 
         return pos / max
     
@@ -126,6 +126,13 @@ class System:
             'tick_speed': self.tick_speed
         }
 
+        profile: TrapezoidalProfile = {
+            'MAX_VELOCITY': 100,
+            'ACCELERATION': 10,
+            'DECELERATION': 10,
+            'tick_speed': self.tick_speed
+        }
+
         while abs(desired_position - self.get_position()) > TARGET_RANGE:
             if self.force_stop:
                 self.force_stop = False
@@ -135,21 +142,18 @@ class System:
                 current_pos=self.get_position(),
                 target_pos=desired_position,
                 current_vel=self.velocity,
-                profile={
-                    'MAX_VELOCITY': 100,
-                    'ACCELERATION': 10,
-                    'DECELERATION': 10,
-                    'tick_speed': self.tick_speed
-                }
+                profile=profile
             )
 
+            # If it's at the constant velocity phase, use PID control
+            # Otherwise, use the trapezoidal profile
             pwm_output = pid_control(
                 setpoint=desired_velocity,
                 measured=self.velocity,
                 pid=pid
-            )
+            ) if abs(desired_velocity) == profile['MAX_VELOCITY'] else desired_velocity
 
-            # If it's in motion and hits a limit, stop
+            # If it's in motion and hits the limit in that direction, stop
             if pwm_output < 0 and self.min_on():
                 self.stop()
                 break
@@ -209,6 +213,13 @@ class System:
 
         self.stop()
         self.max = GPIO.input(self.position_pin)
+
+    # inverts the min and max values if the sensor outputs the signal in reverse
+    def get_max(self):
+        return self.max if self.max > self.min else self.min
+    
+    def get_min(self):
+        return self.min if self.max > self.min else self.max
 
     async def _command_loop(self):
         """Command loop for the system."""
