@@ -1,3 +1,7 @@
+# This is the main file for the motor controller
+# This will create a server to recieve commands from external sources and control the motor
+
+
 import time
 from RPi import GPIO
 from motor import Motor

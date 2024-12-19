@@ -8,6 +8,8 @@ class Command(TypedDict):
     command: str
     args: dict
 
+ALLOWED_COMMANDS = ['go_to', 'move', 'end']
+
 TARGET_RANGE = 0.05 # The range of the target position that is considered "reached"
 
 class System:
@@ -84,6 +86,9 @@ class System:
         # async code to handle commands
         while True:
             command: Command = await self.command_queue.get()
+            if command['command'] not in ALLOWED_COMMANDS:
+                continue
+
             if command['command'] == 'end':
                 self.motor.stop()
                 self.motor.cleanup()
