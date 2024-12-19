@@ -28,11 +28,11 @@ class OscController:
         self.system = system
         self.dispatcher = Dispatcher()
 
-        def command_handler():
+        def command_handler(addr: str, *args):
+            self.system.send_command(addr, *args)
             pass
 
-        for command in COMMANDS:
-            self.dispatcher.map(f"/{command}", command_handler)
+        self.dispatcher.map("/*", command_handler)
 
         self.server = osc_server.ThreadingOSCUDPServer((ip_address, port), self.dispatcher)
         self.server.serve_forever()

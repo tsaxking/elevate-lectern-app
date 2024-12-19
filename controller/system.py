@@ -2,25 +2,21 @@ from motor import Motor
 import RPi.GPIO as GPIO
 import asyncio
 from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalProfile
-from typing import TypedDict
+from typing import TypedDict, Any
 import json
 
 class Command(TypedDict):
     command: str
-    args: dict
+    args: Any
 
 COMMANDS = {
-    'go_to': {
-        'position': float
-    },
-    'move': {
-        'speed': float
-    },
-    'end': {},
-    'stop': {},
-    'calibrate': {},
-    'home': {},
-    'shutdown': {}
+    'go_to': float,
+    'move': float,
+    'end': None,
+    'stop': None,
+    'calibrate': None,
+    'home': None,
+    'shutdown': None
 }
 
 TARGET_RANGE = 0.05 # The range of the target position that is considered "reached"
@@ -247,18 +243,14 @@ class System:
             if command['command'] not in allowed_commands:
                 continue
 
-            # Ensure the command has the correct arguments
-            if not all(key in command['args'] for key in COMMANDS[command['command']].keys()):
-                continue
-
             if command['command'] == 'end':
                 self.stop()
                 self.motor.cleanup()
                 break
             elif command['command'] == 'go_to':
-                self.go_to(command['args']['position'])
+                self.go_to(command['args'])
             elif command['command'] == 'move':
-                self.move(command['args']['speed'])
+                self.move(command['args'])
             elif command['command'] == 'stop':
                 self.stop()
             elif command['command'] == 'home':
