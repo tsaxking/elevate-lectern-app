@@ -43,7 +43,7 @@ class System:
         :param motor: Motor object.
         """
         self.motor = motor
-        self.position_pin = config['position_pin']
+        self.position_pin = Potentiometer(config['position_pin'])
         self.tick_speed = config['tick_speed']
         self.max_limit_pin = config['max_limit_pin']
         self.min_limit_pin = config['min_limit_pin']
@@ -57,7 +57,6 @@ class System:
         self.log_state = config['log_state']
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.position_pin, GPIO.IN)
         GPIO.setup(self.max_limit_pin, GPIO.IN)
         GPIO.setup(self.min_limit_pin, GPIO.IN)
         GPIO.setup(self.power_pin, GPIO.IN)
@@ -78,7 +77,7 @@ class System:
         """Returns the normalized current position of the system."""
         
         min = self.get_min()
-        pos = GPIO.input(self.position_pin) - min
+        pos = self.position_pin.read() - min
         max = self.get_max() - min
 
         return pos / max

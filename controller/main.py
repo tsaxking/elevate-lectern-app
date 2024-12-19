@@ -7,10 +7,13 @@ from RPi import GPIO
 from motor import Motor
 from system import System
 import atexit
+import osc
 
 async def main():
     motor = Motor(pwm_pin=18, frequency=1000)
     system = System(motor, position_pin=17, tick_speed=20)
+    osc_controller = osc.OscController(system, "127.0.0.1", 2222)
+
     await system.startup()
     atexit.register(system.shutdown)
 
