@@ -4,6 +4,7 @@ import asyncio
 from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalProfile
 from typing import TypedDict, Any
 import json
+from potentiometer import Potentiometer
 
 class Command(TypedDict):
     command: str
@@ -28,8 +29,11 @@ class SystemConfig(TypedDict):
     max_limit_pin: int
     min_limit_pin: int
     power_pin: int
-    up_pin: int
-    down_pin: int
+    main_up_pin: int
+    main_down_pin: int
+    log_state: bool
+    secondary_up_pin: int
+    secondary_down_pin: int
 
 class System:
     def __init__(self, motor: Motor, config: SystemConfig):
@@ -44,15 +48,20 @@ class System:
         self.max_limit_pin = config['max_limit_pin']
         self.min_limit_pin = config['min_limit_pin']
         self.power_pin = config['power_pin']
-        self.up_pin = config['up_pin']
-        self.down_pin = config['down_pin']
+        self.main_up_pin = Potentiometer(config['up_pin'])
+        self.main_down_pin = Potentiometer(config['down_pin'])
+        self.secondary_up_pin = Potentiometer(config['secondary_up_pin'])
+        self.secondary_down_pin = Potentiometer(config['secondary_down_pin'])
+        # self.up_pin = config['up_pin']
+        # self.down_pin = config['down_pin']
+        self.log_state = config['log_state']
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.position_pin, GPIO.IN)
         GPIO.setup(self.max_limit_pin, GPIO.IN)
         GPIO.setup(self.min_limit_pin, GPIO.IN)
         GPIO.setup(self.power_pin, GPIO.IN)
-        GPIO.setup(self.up_pin, GPIO.IN)
+        GPIO.setup(self.main_up_pin, GPIO.IN)
 
         self.velocity = 0
         self.min = 0
@@ -84,27 +93,48 @@ class System:
             end_pos = self.get_position()
             self.velocity = (end_pos - start_pos) / (self.tick_speed / 1000)
 
+            if self.log_state:
+                print(chr(27) + "[2J") # Clear the terminal
+                print(f"Position: {end_pos}")
+                print(f"Velocity: {self.velocity}")
+                print(f"Min:      {self.min_on()}")
+                print(f"Max:      {self.max_on()}")
+                print(f"Power:    {GPIO.input(self.power_pin)}")
+                print(f"Up:       {GPIO.input(self.main_up_pin)}")
+                print(f"Down:     {GPIO.input(self.main_down_pin)}")
+
             if GPIO.input(self.power_pin):
                 self.shutdown()
 
-            # TODO: Read gpio input level and match speed
-            # TODO: 2 Separate GPIO up/down pin pairs, one higher priority than the other (remote is higher) 
-
             # If recieving two conflicting signals, stop
-            if GPIO.input(self.up_pin) and GPIO.input(self.down_pin):
-                self.stop()
-            else:
-                if GPIO.input(self.up_pin):
-                    self.force_stop = True
-                    gpio_moving = True
-                    self.move(10)
+            if self.main_up_pin.read() or self.main_down_pin.read():
+                if self.main_up_pin.read() and self.main_down_pin.read():
+                    self.stop()
+                else:
+                    if self.main_up_pin.read():
+                        self.force_stop = True
+                        gpio_moving = True
+                        self.move(10 * self.main_up_pin.read())
 
-                if GPIO.input(self.down_pin):
-                    self.force_stop = True
-                    gpio_moving = True
-                    self.move(-10)
+                    if self.main_down_pin.read():
+                        self.force_stop = True
+                        gpio_moving = True
+                        self.move(-10 * self.main_down_pin.read())
+            elif self.secondary_up_pin.read() or self.secondary_down_pin.read():
+                if self.secondary_up_pin.read() and self.secondary_down_pin.read():
+                    self.stop()
+                else:
+                    if self.secondary_up_pin.read():
+                        self.force_stop = True
+                        gpio_moving = True
+                        self.move(10 * self.secondary_up_pin.read())
 
-            if gpio_moving and not GPIO.input(self.up_pin) and not GPIO.input(self.down_pin):
+                    if self.secondary_down_pin.read():
+                        self.force_stop = True
+                        gpio_moving = True
+                        self.move(-10 * self.secondary_down_pin.read())
+
+            if gpio_moving and not GPIO.input(self.main_up_pin) and not GPIO.input(self.main_down_pin):
                 gpio_moving = False
                 self.stop()
 
@@ -148,6 +178,14 @@ class System:
         while abs(desired_position - self.get_position()) > TARGET_RANGE:
             if self.force_stop:
                 self.force_stop = False
+                break
+
+
+            # If it surpasses the target position, stop
+            if current < desired_position and self.get_position() > desired_position:
+                break
+
+            if current > desired_position and self.get_position() < desired_position:
                 break
 
             desired_velocity = trapezoidal_velocity_control(
