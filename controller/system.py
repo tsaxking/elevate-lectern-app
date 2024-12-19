@@ -14,6 +14,7 @@ class SYSTEM_STATE(Enum):
     CALIBRATING = auto()
     SHUTDOWN = auto()
     STARTUP = auto()
+    LOCK = auto()
 
 class Command(TypedDict):
     command: str
@@ -305,32 +306,44 @@ class System:
                 self.shutdown()
                 break
 
-            if self.sensor_state['main_up'] and self.sensor_state['main_down']:
+            # not gpio_moving isn't put into its own block because each of the if statements are mutually exclusive
+
+            if not gpio_moving and self.sensor_state['main_up'] and self.sensor_state['main_down']:
+                self.state = SYSTEM_STATE.LOCK
                 self.stop()
-                gpio_moving = False
+                gpio_moving = True
             
-            if self.sensor_state['main_up']:
+            if not gpio_moving and self.sensor_state['main_up']:
+                self.state = SYSTEM_STATE.MOVING
                 self.move(10 * self.sensor_state['main_up'])
                 gpio_moving = True
             
-            if self.sensor_state['main_down']:
+            if not gpio_moving and self.sensor_state['main_down']:
+                self.state = SYSTEM_STATE.MOVING
                 self.move(-10 * self.sensor_state['main_down'])
                 gpio_moving = True
             
-            if self.sensor_state['secondary_up'] and self.sensor_state['secondary_down']:
+            if not gpio_moving and self.sensor_state['secondary_up'] and self.sensor_state['secondary_down']:
+                self.state = SYSTEM_STATE.LOCK
                 self.stop()
-                gpio_moving = False
+                gpio_moving = True
             
-            if self.sensor_state['secondary_up']:
+            if not gpio_moving and self.sensor_state['secondary_up']:
+                self.state = SYSTEM_STATE.MOVING
                 self.move(10 * self.sensor_state['secondary_up'])
                 gpio_moving = True
             
-            if self.sensor_state['secondary_down']:
+            if not gpio_moving and self.sensor_state['secondary_down']:
+                self.state = SYSTEM_STATE.MOVING
                 self.move(-10 * self.sensor_state['secondary_down'])
                 gpio_moving = True
 
-            if not gpio_moving:
+
+            # If it was moving with the GPIO and now it's not, stop
+            if gpio_moving and not self.sensor_state['main_up'] and not self.sensor_state['main_down'] and not self.sensor_state['secondary_up'] and not self.sensor_state['secondary_down']:
                 self.stop()
+                gpio_moving = False
+                self.state = SYSTEM_STATE.STAND_BY
 
             command: Command = self.command_queue.get()
             allowed_commands = COMMANDS.keys()
