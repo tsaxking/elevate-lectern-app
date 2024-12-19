@@ -9,6 +9,19 @@ class Command(TypedDict):
     command: str
     args: dict
 
+COMMANDS = {
+    'go_to': {
+        'position': float
+    },
+    'move': {
+        'speed': float
+    },
+    'end': {},
+    'stop': {},
+    'calibrate': {},
+    'home': {},
+    'shutdown': {}
+}
 
 TARGET_RANGE = 0.05 # The range of the target position that is considered "reached"
 
@@ -229,16 +242,13 @@ class System:
         # async code to handle commands
         while True:
             command: Command = await self.command_queue.get()
-            ALLOWED_COMMANDS = [
-                'go_to', 
-                'move', 
-                'end',
-                'stop',
-                'calibrate',
-                'home',
-                'shutdown'
-            ]
-            if command['command'] not in ALLOWED_COMMANDS:
+            allowed_commands = COMMANDS.keys()
+
+            if command['command'] not in allowed_commands:
+                continue
+
+            # Ensure the command has the correct arguments
+            if not all(key in command['args'] for key in COMMANDS[command['command']].keys()):
                 continue
 
             if command['command'] == 'end':
