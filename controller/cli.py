@@ -1,6 +1,7 @@
 from system import System, SYSTEM_STATE
 import inquirer
 import asyncio
+import globals
 
 class CLI:
     def __init__(self, system: System):
@@ -47,3 +48,13 @@ class CLI:
             if response["action"] == "Shutdown":
                 self.system.send_command("shutdown")
                 break
+
+
+if __name__ == "__main__":
+    try:
+        cli = CLI(globals.SYSTEM)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        globals.SYSTEM.shutdown()
+        print("Goodbye!")
