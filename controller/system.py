@@ -3,6 +3,7 @@ import RPi.GPIO as GPIO
 import asyncio
 from control import trapezoidal_velocity_control, pid_control, PID
 from typing import TypedDict
+import json
 
 class Command(TypedDict):
     command: str
@@ -31,11 +32,9 @@ class System:
         GPIO.setup(self.min_limit_pin, GPIO.IN)
 
         self.velocity = 0
-        self.offset = 0
+        self.min = 0
+        self.max = 100
         self.force_stop = False
-        # Limit switch state
-        self.max_on = False
-        self.min_on = False
 
         # Start velocity calculation loop in the background
         asyncio.create_task(self._set_sensing_loop())
@@ -43,24 +42,43 @@ class System:
         self.command_queue: asyncio.Queue = asyncio.Queue()
         asyncio.create_task(self._command_loop())
 
-    def get_position(self, offset = True) -> int:
+    def get_position(self) -> float:
         """Returns the current position of the system."""
-        return GPIO.input(self.position_pin) + self.offset if offset else GPIO.input(self.position_pin)
+        
+        min = self.min
+        pos = GPIO.input(self.position_pin) - min
+        max = self.max - min
+
+        return pos / max
     
     async def _set_sensing_loop(self):
         """Periodically calculates the velocity of the system."""
         # async code to calculate velocity
         while True:
-            current_pos = self.get_position()
+            start_pos = self.get_position()
             await asyncio.sleep(self.tick_speed / 1000)
-            new_pos = self.get_position()
-            self.velocity = (new_pos - current_pos) / (self.tick_speed / 1000)
+            end_pos = self.get_position()
+            self.velocity = (end_pos - start_pos) / (self.tick_speed / 1000)
 
-            self.max_on = GPIO.input(self.max_limit_pin)
-            self.min_on = GPIO.input(self.min_limit_pin)
+    def min_on(self):
+        return GPIO.input(self.min_limit_pin)
     
-    def go_to(self, position: int):
+    def max_on(self):
+        return GPIO.input(self.max_limit_pin)
+    
+    def go_to(self, desired_position: int):
         """Moves the system to the specified position."""
+
+        if desired_position < 0 or desired_position > 1:
+            return
+
+        # If it's at its limit and wants to go further, do nothing
+        # This is to prevent the motor from trying to move past its limits
+        current = self.get_position()
+        if current < desired_position and self.max_on():
+            return
+        if current > desired_position and self.min_on():
+            return
 
         pid: PID = {
             'Kp': 1.0,
@@ -71,14 +89,14 @@ class System:
             'tick_speed': self.tick_speed
         }
 
-        while abs(position - self.get_position()) > TARGET_RANGE:
+        while abs(desired_position - self.get_position()) > TARGET_RANGE:
             if self.force_stop:
                 self.force_stop = False
                 break
 
             desired_velocity = trapezoidal_velocity_control(
                 current_pos=self.get_position(),
-                target_pos=position,
+                target_pos=desired_position,
                 current_vel=self.velocity,
                 profile={
                     'MAX_VELOCITY': 100,
@@ -105,16 +123,47 @@ class System:
         self.motor.stop()
         self.force_stop = True
 
-    def home(self):
+    async def to_min(self):
         """Moves the system to the home position."""
         # Implement this function
         # Ignore self.force_stop value
         # I don't know if this will block the thread
 
-        while not self.min_on:
-            self.move(-100)
+        while not self.min_on():
+            self.move(-10)
+            await asyncio.sleep(self.tick_speed / 1000)
+
+        self.move(5)
+        await asyncio.sleep(0.1)
+
+        # Slower speed
+        while not self.min_on():
+            self.move(-1)
+            await asyncio.sleep(self.tick_speed / 100)
+
         self.stop()
-        self.offset = self.get_position(False)
+        self.min = GPIO.input(self.position_pin)
+
+    async def to_max(self):
+        """Moves the system to the max position."""
+        # Implement this function
+        # Ignore self.force_stop value
+        # I don't know if this will block the thread
+
+        while not self.max_on():
+            self.move(10)
+            await asyncio.sleep(self.tick_speed / 1000)
+
+        self.move(-5)
+        await asyncio.sleep(0.1)
+
+        # Slower speed
+        while not self.max_on():
+            self.move(1)
+            await asyncio.sleep(self.tick_speed / 100)
+
+        self.stop()
+        self.max = GPIO.input(self.position_pin)
 
     async def _command_loop(self):
         """Command loop for the system."""
@@ -125,12 +174,41 @@ class System:
                 continue
 
             if command['command'] == 'end':
-                self.motor.stop()
+                self.stop()
                 self.motor.cleanup()
                 break
             elif command['command'] == 'go_to':
                 self.go_to(command['args']['position'])
+            elif command['command'] == 'move':
+                self.move(command['args']['speed'])
+            elif command['command'] == 'stop':
+                self.stop()
+            elif command['command'] == 'home':
+                await self.to_min()
 
     async def send_command(self, command: Command):
         """Sends a command to the system."""
         await self.command_queue.put(command)
+
+    async def startup(self):
+        """Starts the system."""
+        await self.to_min()
+        self.load_state()
+
+    def save_state(self):
+        # JSON dump the current state of the system
+        str = json.dump({
+            'position': self.get_position(),
+        })
+
+        with open('state.json', 'w') as f:
+            f.write(str)
+
+    def load_state(self):
+        # Load the state from the JSON file
+        try:
+            with open('state.json', 'r') as f:
+                data = json.load(f)
+                self.go_to(data['position'])
+        except:
+            self.go_to(0)
