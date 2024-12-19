@@ -1,7 +1,7 @@
 from motor import Motor
 import RPi.GPIO as GPIO
 import asyncio
-from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalProfile, loop_until
+from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalProfile, loop_until, async_loop_until
 from typing import TypedDict, Any
 import json
 from potentiometer import Potentiometer
@@ -103,6 +103,7 @@ class System:
                 self.shutdown()
 
             # If recieving two conflicting signals, stop
+            # Priority is given to the main pins
             if self.main_up_pin.read() or self.main_down_pin.read():
                 if self.main_up_pin.read() and self.main_down_pin.read():
                     self.stop()
@@ -148,7 +149,6 @@ class System:
             return
 
         # If it's at its limit and wants to go further, do nothing
-        # This is to prevent the motor from trying to move past its limits
         current = self.get_position()
         if current < desired_position and self.max_on():
             return
@@ -219,42 +219,56 @@ class System:
 
     async def to_min(self):
         """Moves the system to the home position."""
-        # Implement this function
         # Ignore self.force_stop value
         # I don't know if this will block the thread
 
-        while not self.min_on():
+        def until():
+            return self.min_on()
+        
+        def loop_fast():
             self.move(-10)
-            await asyncio.sleep(self.tick_speed / 1000)
+            return False
+        
+        def loop_slow():
+            self.move(-1)
+            return False
+        
+        await async_loop_until(loop_fast, until, self.tick_speed)
 
+        self.stop()
         self.move(5)
         await asyncio.sleep(0.1)
 
         # Slower speed
-        while not self.min_on():
-            self.move(-1)
-            await asyncio.sleep(self.tick_speed / 100)
+        await async_loop_until(loop_slow, until, self.tick_speed)
 
         self.stop()
         self.min = GPIO.input(self.position_pin)
 
     async def to_max(self):
         """Moves the system to the max position."""
-        # Implement this function
         # Ignore self.force_stop value
         # I don't know if this will block the thread
 
-        while not self.max_on():
+        def until():
+            return self.max_on()
+        
+        def loop_fast():
             self.move(10)
-            await asyncio.sleep(self.tick_speed / 1000)
+            return False
+        
+        def loop_slow():
+            self.move(1)
+            return False
+        
+        await async_loop_until(loop_fast, until, self.tick_speed)
 
+        self.stop()
         self.move(-5)
         await asyncio.sleep(0.1)
 
         # Slower speed
-        while not self.max_on():
-            self.move(1)
-            await asyncio.sleep(self.tick_speed / 100)
+        await async_loop_until(loop_slow, until, self.tick_speed)
 
         self.stop()
         self.max = GPIO.input(self.position_pin)
