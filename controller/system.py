@@ -33,7 +33,7 @@ class System:
 
         self.velocity = 0
         self.min = 0
-        self.max = 100
+        self.max = 100 # Will be changed after calibration
         self.force_stop = False
 
         # Start velocity calculation loop in the background
@@ -111,6 +111,14 @@ class System:
                 measured=self.velocity,
                 pid=pid
             )
+
+            # If it's in motion and hits a limit, stop
+            if pwm_output < 0 and self.min_on():
+                self.stop()
+                break
+            if pwm_output > 0 and self.max_on():
+                self.stop()
+                break
 
             self.motor.set_speed(pwm_output)
 
@@ -199,6 +207,8 @@ class System:
         # JSON dump the current state of the system
         str = json.dump({
             'position': self.get_position(),
+            'min': self.min,
+            'max': self.max
         })
 
         with open('state.json', 'w') as f:
