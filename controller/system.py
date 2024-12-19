@@ -9,27 +9,41 @@ class Command(TypedDict):
     command: str
     args: dict
 
-ALLOWED_COMMANDS = ['go_to', 'move', 'end']
 
 TARGET_RANGE = 0.05 # The range of the target position that is considered "reached"
 
+class SystemConfig(TypedDict):
+    motor: Motor
+    position_pin: int
+    tick_speed: int
+    max_limit_pin: int
+    min_limit_pin: int
+    power_pin: int
+    up_pin: int
+    down_pin: int
+
 class System:
-    def __init__(self, motor: Motor, position_pin: int, tick_speed: int, max_limit_pin: int, min_limit_pin: int):
+    def __init__(self, motor: Motor, config: SystemConfig):
         """
         Initializes the system object.
         
         :param motor: Motor object.
         """
         self.motor = motor
-        self.position_pin = position_pin
-        self.tick_speed = tick_speed
-        self.max_limit_pin = max_limit_pin
-        self.min_limit_pin = min_limit_pin
+        self.position_pin = config['position_pin']
+        self.tick_speed = config['tick_speed']
+        self.max_limit_pin = config['max_limit_pin']
+        self.min_limit_pin = config['min_limit_pin']
+        self.power_pin = config['power_pin']
+        self.up_pin = config['up_pin']
+        self.down_pin = config['down_pin']
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.position_pin, GPIO.IN)
         GPIO.setup(self.max_limit_pin, GPIO.IN)
         GPIO.setup(self.min_limit_pin, GPIO.IN)
+        GPIO.setup(self.power_pin, GPIO.IN)
+        GPIO.setup(self.up_pin, GPIO.IN)
 
         self.velocity = 0
         self.min = 0
@@ -54,11 +68,33 @@ class System:
     async def _set_sensing_loop(self):
         """Periodically calculates the velocity of the system."""
         # async code to calculate velocity
+        gpio_moving = False
         while True:
             start_pos = self.get_position()
             await asyncio.sleep(self.tick_speed / 1000)
             end_pos = self.get_position()
             self.velocity = (end_pos - start_pos) / (self.tick_speed / 1000)
+
+            if GPIO.input(self.power_pin):
+                self.shutdown()
+
+            # If recieving two conflicting signals, stop
+            if GPIO.input(self.up_pin) and GPIO.input(self.down_pin):
+                self.stop()
+            else:
+                if GPIO.input(self.up_pin):
+                    self.force_stop = True
+                    gpio_moving = True
+                    self.move(10)
+
+                if GPIO.input(self.down_pin):
+                    self.force_stop = True
+                    gpio_moving = True
+                    self.move(-10)
+
+            if gpio_moving and not GPIO.input(self.up_pin) and not GPIO.input(self.down_pin):
+                gpio_moving = False
+                self.stop()
 
     def min_on(self):
         return GPIO.input(self.min_limit_pin)
@@ -68,6 +104,7 @@ class System:
     
     def go_to(self, desired_position: int):
         """Moves the system to the specified position."""
+        self.force_stop = False
 
         if desired_position < 0 or desired_position > 1:
             return
@@ -178,6 +215,15 @@ class System:
         # async code to handle commands
         while True:
             command: Command = await self.command_queue.get()
+            ALLOWED_COMMANDS = [
+                'go_to', 
+                'move', 
+                'end',
+                'stop',
+                'calibrate',
+                'home',
+                'shutdown'
+            ]
             if command['command'] not in ALLOWED_COMMANDS:
                 continue
 
@@ -192,23 +238,35 @@ class System:
             elif command['command'] == 'stop':
                 self.stop()
             elif command['command'] == 'home':
-                await self.to_min()
+                await self.go_to(0)
+            elif command['command'] == 'calibrate':
+                await self.calibrate()
+            elif command['command'] == 'shutdown':
+                await self.shutdown()
 
     async def send_command(self, command: Command):
         """Sends a command to the system."""
         await self.command_queue.put(command)
 
+    async def calibrate(self):
+        await self.to_max()
+        await self.to_min()
+
     async def startup(self):
         """Starts the system."""
-        await self.to_min()
+        await self.calibrate()
         self.load_state()
+
+    async def shutdown(self):
+        """Shuts down the system."""
+        await self.to_min()
+        self.stop()
+        self.motor.cleanup()
 
     def save_state(self):
         # JSON dump the current state of the system
         str = json.dump({
             'position': self.get_position(),
-            'min': self.min,
-            'max': self.max
         })
 
         with open('state.json', 'w') as f:
