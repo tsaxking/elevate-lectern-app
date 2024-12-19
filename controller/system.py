@@ -5,6 +5,15 @@ from control import trapezoidal_velocity_control, pid_control, PID, TrapezoidalP
 from typing import TypedDict, Any
 import json
 from potentiometer import Potentiometer
+from enum import Enum, auto
+import time
+
+class SYSTEM_STATE(Enum):
+    STAND_BY = auto()
+    MOVING = auto()
+    CALIBRATING = auto()
+    SHUTDOWN = auto()
+    STARTUP = auto()
 
 class Command(TypedDict):
     command: str
@@ -34,6 +43,18 @@ class SystemConfig(TypedDict):
     secondary_up_pin: int
     secondary_down_pin: int
 
+
+class SensorState(TypedDict):
+    position: float = 0
+    velocity: float = 0
+    min_limit: bool = False
+    max_limit: bool = False
+    power: bool = False
+    main_up: float = 0
+    main_down: float = 0
+    secondary_up: float = 0
+    secondary_down: float = 0
+
 class System:
     def __init__(self, motor: Motor, config: SystemConfig):
         """
@@ -52,6 +73,9 @@ class System:
         self.secondary_up_pin = Potentiometer(config['secondary_up_pin'])
         self.secondary_down_pin = Potentiometer(config['secondary_down_pin'])
         self.log_state = config['log_state']
+        self.state = SYSTEM_STATE.STAND_BY
+
+        self.sensor_state = SensorState()
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.max_limit_pin, GPIO.IN)
@@ -64,11 +88,7 @@ class System:
         self.max = 100 # Will be changed after calibration
         self.force_stop = False
 
-        # Start velocity calculation loop in the background
-        asyncio.create_task(self._set_sensing_loop())
-        # Command queue for asynchronous command handling
         self.command_queue: asyncio.Queue = asyncio.Queue()
-        asyncio.create_task(self._command_loop())
 
     def get_position(self) -> float:
         """Returns the normalized current position of the system."""
@@ -79,69 +99,7 @@ class System:
 
         return pos / max
     
-    async def _set_sensing_loop(self):
-        """Periodically calculates the velocity of the system."""
-        # async code to calculate velocity
-        gpio_moving = False
-        while True:
-            start_pos = self.get_position()
-            await asyncio.sleep(self.tick_speed / 1000)
-            end_pos = self.get_position()
-            self.velocity = (end_pos - start_pos) / (self.tick_speed / 1000)
-
-            if self.log_state:
-                print(chr(27) + "[2J") # Clear the terminal
-                print(f"Position: {end_pos}")
-                print(f"Velocity: {self.velocity}")
-                print(f"Min:      {self.min_on()}")
-                print(f"Max:      {self.max_on()}")
-                print(f"Power:    {GPIO.input(self.power_pin)}")
-                print(f"Up:       {GPIO.input(self.main_up_pin)}")
-                print(f"Down:     {GPIO.input(self.main_down_pin)}")
-
-            if GPIO.input(self.power_pin):
-                self.shutdown()
-
-            # If recieving two conflicting signals, stop
-            # Priority is given to the main pins
-            if self.main_up_pin.read() or self.main_down_pin.read():
-                if self.main_up_pin.read() and self.main_down_pin.read():
-                    self.stop()
-                else:
-                    if self.main_up_pin.read():
-                        self.force_stop = True
-                        gpio_moving = True
-                        self.move(10 * self.main_up_pin.read())
-
-                    if self.main_down_pin.read():
-                        self.force_stop = True
-                        gpio_moving = True
-                        self.move(-10 * self.main_down_pin.read())
-            elif self.secondary_up_pin.read() or self.secondary_down_pin.read():
-                if self.secondary_up_pin.read() and self.secondary_down_pin.read():
-                    self.stop()
-                else:
-                    if self.secondary_up_pin.read():
-                        self.force_stop = True
-                        gpio_moving = True
-                        self.move(10 * self.secondary_up_pin.read())
-
-                    if self.secondary_down_pin.read():
-                        self.force_stop = True
-                        gpio_moving = True
-                        self.move(-10 * self.secondary_down_pin.read())
-
-            if gpio_moving and not GPIO.input(self.main_up_pin) and not GPIO.input(self.main_down_pin):
-                gpio_moving = False
-                self.stop()
-
-    def min_on(self):
-        return GPIO.input(self.min_limit_pin)
-    
-    def max_on(self):
-        return GPIO.input(self.max_limit_pin)
-    
-    def go_to(self, desired_position: int):
+    async def go_to(self, desired_position: int):
         """Moves the system to the specified position."""
         self.force_stop = False
 
@@ -171,16 +129,18 @@ class System:
             'tick_speed': self.tick_speed
         }
 
-        def condition():
+        self.state = SYSTEM_STATE.MOVING
+
+        while True:
             if self.force_stop:
-                return True
+                break
             if current < desired_position and self.get_position() > desired_position:
-                return True
+                break
             if current > desired_position and self.get_position() < desired_position:
-                return True
-            return abs(desired_position - self.get_position()) < TARGET_RANGE
+                break
+            if abs(desired_position - self.get_position()) < TARGET_RANGE:
+                break
         
-        def loop():            
             desired_velocity = trapezoidal_velocity_control(
                 current_pos=self.get_position(),
                 target_pos=desired_position,
@@ -196,17 +156,17 @@ class System:
             ) if abs(desired_velocity) == profile['MAX_VELOCITY'] else desired_velocity
 
             # If it's in motion and hits the limit in that direction, stop
-            if pwm_output < 0 and self.min_on():
+            if pwm_output < 0 and self.sensor_state['min_limit']:
                 self.stop()
-                return True
-            if pwm_output > 0 and self.max_on():
+                break
+            if pwm_output > 0 and self.sensor_state['max_limit']:
                 self.stop()
-                return True
+                break
 
-            self.motor.set_speed(pwm_output)
-            return False
+            self.move(pwm_output)
+            await asyncio.sleep(self.tick_speed / 1000)
 
-        loop_until(loop, condition, self.tick_speed)
+        self.state = SYSTEM_STATE.STAND_BY
 
     def move(self, speed: float):
         """Moves the system at the specified speed."""
@@ -219,56 +179,44 @@ class System:
 
     async def to_min(self):
         """Moves the system to the home position."""
-        # Ignore self.force_stop value
-        # I don't know if this will block the thread
 
-        def until():
-            return self.min_on()
-        
-        def loop_fast():
+        while not self.sensor_state['min_limit']:
+            if self.force_stop:
+                break
             self.move(-10)
-            return False
+            await asyncio.sleep(self.tick_speed / 1000)
         
-        def loop_slow():
-            self.move(-1)
-            return False
-        
-        await async_loop_until(loop_fast, until, self.tick_speed)
-
         self.stop()
         self.move(5)
         await asyncio.sleep(0.1)
 
-        # Slower speed
-        await async_loop_until(loop_slow, until, self.tick_speed)
+        while not self.sensor_state['min_limit']:
+            if self.force_stop:
+                break
+            self.move(1)
+            await asyncio.sleep(self.tick_speed / 1000)
 
         self.stop()
         self.min = GPIO.input(self.position_pin)
 
     async def to_max(self):
         """Moves the system to the max position."""
-        # Ignore self.force_stop value
-        # I don't know if this will block the thread
 
-        def until():
-            return self.max_on()
-        
-        def loop_fast():
+        while not self.sensor_state['max_limit']:
+            if self.force_stop:
+                break
             self.move(10)
-            return False
+            await asyncio.sleep(self.tick_speed / 1000)
         
-        def loop_slow():
-            self.move(1)
-            return False
-        
-        await async_loop_until(loop_fast, until, self.tick_speed)
-
         self.stop()
         self.move(-5)
         await asyncio.sleep(0.1)
 
-        # Slower speed
-        await async_loop_until(loop_slow, until, self.tick_speed)
+        while not self.sensor_state['max_limit']:
+            if self.force_stop:
+                break
+            self.move(-1)
+            await asyncio.sleep(self.tick_speed / 1000)
 
         self.stop()
         self.max = GPIO.input(self.position_pin)
@@ -280,48 +228,26 @@ class System:
     def get_min(self):
         return self.min if self.max > self.min else self.max
 
-    async def _command_loop(self):
-        """Command loop for the system."""
-        # async code to handle commands
-        while True:
-            command: Command = await self.command_queue.get()
-            allowed_commands = COMMANDS.keys()
-
-            if command['command'] not in allowed_commands:
-                continue
-
-            if command['command'] == 'end':
-                self.stop()
-                self.motor.cleanup()
-                break
-            elif command['command'] == 'go_to':
-                self.go_to(command['args'])
-            elif command['command'] == 'move':
-                self.move(command['args'])
-            elif command['command'] == 'stop':
-                self.stop()
-            elif command['command'] == 'home':
-                await self.go_to(0)
-            elif command['command'] == 'calibrate':
-                await self.calibrate()
-            elif command['command'] == 'shutdown':
-                await self.shutdown()
-
     async def send_command(self, command: Command):
         """Sends a command to the system."""
         await self.command_queue.put(command)
 
     async def calibrate(self):
+        self.state = SYSTEM_STATE.CALIBRATING
         await self.to_max()
         await self.to_min()
+        self.state = SYSTEM_STATE.STAND_BY
 
     async def startup(self):
         """Starts the system."""
+        self.state = SYSTEM_STATE.STARTUP
         await self.calibrate()
         self.load_state()
+        self.state = SYSTEM_STATE.STAND_BY
 
     async def shutdown(self):
         """Shuts down the system."""
+        self.state = SYSTEM_STATE.SHUTDOWN
         self.save_state()
         await self.to_min()
         self.stop()
@@ -344,3 +270,93 @@ class System:
                 self.go_to(data['position'])
         except:
             self.go_to(0)
+
+    def set_sensor_state(self):
+        prev_pos = self.sensor_state['position']
+        current_pos = self.get_position()   
+        self.sensor_state['position'] = current_pos
+        self.sensor_state['velocity'] = (current_pos - prev_pos) / (self.tick_speed / 1000)
+        self.sensor_state['min_limit'] = GPIO.input(self.min_limit_pin)
+        self.sensor_state['max_limit'] = GPIO.input(self.max_limit_pin)
+        self.sensor_state['power'] = GPIO.input(self.power_pin)
+        self.sensor_state['main_up'] = self.main_up_pin.read()
+        self.sensor_state['main_down'] = self.main_down_pin.read()
+        self.sensor_state['secondary_up'] = self.secondary_up_pin.read()
+        self.sensor_state['secondary_down'] = self.secondary_down_pin.read()
+
+        if self.log_state:
+            print(chr(27) + "[2J") # Clear the terminal
+            print(f"Position: ----- {current_pos}")
+            print(f"Velocity: ----- {self.sensor_state['velocity']}")
+            print(f"Min: ---------- {self.sensor_state['min_limit']}")
+            print(f"Max: ---------- {self.sensor_state['max_limit']}")
+            print(f"Power: -------- {self.sensor_state['power']}")
+            print(f"Up: ----------- {self.sensor_state['main_up']}")
+            print(f"Down: --------- {self.sensor_state['main_down']}")
+            print(f"Secondary Up: - {self.sensor_state['secondary_up']}")
+            print(f"Secondary Down: {self.sensor_state['secondary_down']}")
+
+    def main_loop(self):
+        gpio_moving = False
+        while True:
+            time.sleep(self.tick_speed / 1000)
+            self.set_sensor_state()
+            if self.sensor_state['power']:
+                self.shutdown()
+                break
+
+            if self.sensor_state['main_up'] and self.sensor_state['main_down']:
+                self.stop()
+                gpio_moving = False
+            
+            if self.sensor_state['main_up']:
+                self.move(10 * self.sensor_state['main_up'])
+                gpio_moving = True
+            
+            if self.sensor_state['main_down']:
+                self.move(-10 * self.sensor_state['main_down'])
+                gpio_moving = True
+            
+            if self.sensor_state['secondary_up'] and self.sensor_state['secondary_down']:
+                self.stop()
+                gpio_moving = False
+            
+            if self.sensor_state['secondary_up']:
+                self.move(10 * self.sensor_state['secondary_up'])
+                gpio_moving = True
+            
+            if self.sensor_state['secondary_down']:
+                self.move(-10 * self.sensor_state['secondary_down'])
+                gpio_moving = True
+
+            if not gpio_moving:
+                self.stop()
+
+            command: Command = self.command_queue.get()
+            allowed_commands = COMMANDS.keys()
+
+            if command['command'] not in allowed_commands:
+                continue
+
+            if command['command'] == 'go_to' and self.state == SYSTEM_STATE.STAND_BY:
+                asyncio.create_task(self.go_to(command['args']))
+
+            if command['command'] == 'move' and self.state == SYSTEM_STATE.STAND_BY:
+                self.state = SYSTEM_STATE.MOVING
+                self.move(command['args'])
+
+            if command['command'] == 'shutdown':
+                self.force_stop = True
+                asyncio.create_task(self.shutdown())
+                break
+
+            if command['command'] == 'calibrate' and self.state == SYSTEM_STATE.STAND_BY:
+                asyncio.create_task(self.calibrate())
+            
+            if command['command'] == 'home' and self.state == SYSTEM_STATE.STAND_BY:
+                asyncio.create_task(self.to_min())
+
+            if command['command'] == 'stop':
+                self.force_stop = True
+                self.stop()
+                self.state = SYSTEM_STATE.STAND_BY

@@ -30,6 +30,7 @@ async def main():
 
     await system.startup()
     atexit.register(system.shutdown)
+    system.main_loop()
 
 if __name__ == "__main__":
     try:
