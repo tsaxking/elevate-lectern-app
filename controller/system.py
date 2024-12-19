@@ -78,6 +78,9 @@ class System:
             if GPIO.input(self.power_pin):
                 self.shutdown()
 
+            # TODO: Read gpio input level and match speed
+            # TODO: 2 Separate GPIO up/down pin pairs, one higher priority than the other (remote is higher) 
+
             # If recieving two conflicting signals, stop
             if GPIO.input(self.up_pin) and GPIO.input(self.down_pin):
                 self.stop()
@@ -270,6 +273,7 @@ class System:
 
     async def shutdown(self):
         """Shuts down the system."""
+        self.save_state()
         await self.to_min()
         self.stop()
         self.motor.cleanup()
