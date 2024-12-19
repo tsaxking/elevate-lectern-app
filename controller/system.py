@@ -63,6 +63,7 @@ class System:
         
         :param motor: Motor object.
         """
+        GPIO.setmode(GPIO.BCM)
         self.motor = motor
         self.position_pin = Potentiometer(config['position_pin'])
         self.tick_speed = config['tick_speed']
@@ -78,7 +79,6 @@ class System:
 
         self.sensor_state = SensorState()
 
-        GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.max_limit_pin, GPIO.IN)
         GPIO.setup(self.min_limit_pin, GPIO.IN)
         GPIO.setup(self.power_pin, GPIO.IN)
@@ -287,15 +287,15 @@ class System:
 
         if self.log_state:
             print(chr(27) + "[2J") # Clear the terminal
-            print(f"Position: ----- {current_pos}")
-            print(f"Velocity: ----- {self.sensor_state['velocity']}")
-            print(f"Min: ---------- {self.sensor_state['min_limit']}")
-            print(f"Max: ---------- {self.sensor_state['max_limit']}")
-            print(f"Power: -------- {self.sensor_state['power']}")
-            print(f"Up: ----------- {self.sensor_state['main_up']}")
-            print(f"Down: --------- {self.sensor_state['main_down']}")
-            print(f"Secondary Up: - {self.sensor_state['secondary_up']}")
-            print(f"Secondary Down: {self.sensor_state['secondary_down']}")
+            print(f"Position: -------- {current_pos}")
+            print(f"Velocity: -------- {self.sensor_state['velocity']}")
+            print(f"Min: ------------- {self.sensor_state['min_limit']}")
+            print(f"Max: ------------- {self.sensor_state['max_limit']}")
+            print(f"Power: ----------- {self.sensor_state['power']}")
+            print(f"Up: -------------- {self.sensor_state['main_up']}")
+            print(f"Down: ------------ {self.sensor_state['main_down']}")
+            print(f"Secondary Up: ---- {self.sensor_state['secondary_up']}")
+            print(f"Secondary Down: -- {self.sensor_state['secondary_down']}")
 
     def main_loop(self):
         gpio_moving = False
