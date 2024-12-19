@@ -299,8 +299,10 @@ class System:
 
     def main_loop(self):
         gpio_moving = False
+        sleep_time = self.tick_speed / 1000
         while True:
-            time.sleep(self.tick_speed / 1000)
+            time.sleep(sleep_time)
+            start = time.time()
             self.set_sensor_state()
             if self.sensor_state['power']:
                 self.shutdown()
@@ -346,10 +348,6 @@ class System:
                 self.state = SYSTEM_STATE.STAND_BY
 
             command: Command = self.command_queue.get()
-            allowed_commands = COMMANDS.keys()
-
-            if command['command'] not in allowed_commands:
-                continue
 
             if command['command'] == 'go_to' and self.state == SYSTEM_STATE.STAND_BY:
                 asyncio.create_task(self.go_to(command['args']))
@@ -373,3 +371,5 @@ class System:
                 self.force_stop = True
                 self.stop()
                 self.state = SYSTEM_STATE.STAND_BY
+                
+            sleep_time = self.tick_speed / 1000 - (time.time() - start)
