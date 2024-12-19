@@ -229,9 +229,9 @@ class System:
     def get_min(self):
         return self.min if self.max > self.min else self.max
 
-    async def send_command(self, command: Command):
+    def send_command(self, command: Command):
         """Sends a command to the system."""
-        await self.command_queue.put(command)
+        self.command_queue.put(command)
 
     async def calibrate(self):
         self.state = SYSTEM_STATE.CALIBRATING
@@ -297,7 +297,7 @@ class System:
             print(f"Secondary Up: ---- {self.sensor_state['secondary_up']}")
             print(f"Secondary Down: -- {self.sensor_state['secondary_down']}")
 
-    def main_loop(self):
+    async def main_loop(self):
         gpio_moving = False
         sleep_time = self.tick_speed / 1000
         while True:
@@ -339,6 +339,14 @@ class System:
                 self.state = SYSTEM_STATE.MOVING
                 self.move(-10 * self.sensor_state['secondary_down'])
                 gpio_moving = True
+
+            if self.sensor_state['velocity'] > 0 and self.sensor_state['max_limit']:
+                self.stop()
+                self.state = SYSTEM_STATE.LOCK
+
+            if self.sensor_state['velocity'] < 0 and self.sensor_state['min_limit']:
+                self.stop()
+                self.state = SYSTEM_STATE.LOCK
 
 
             # If it was moving with the GPIO and now it's not, stop

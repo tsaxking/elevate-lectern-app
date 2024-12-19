@@ -8,6 +8,7 @@ from motor import Motor
 from system import System
 import atexit
 import osc
+import asyncio
 
 async def main():
     motor = Motor(pwm_pin=18, frequency=1000)
@@ -30,7 +31,7 @@ async def main():
 
     await system.startup()
     atexit.register(system.shutdown)
-    system.main_loop()
+    asyncio.create_task(system.main_loop())
 
 if __name__ == "__main__":
     try:
