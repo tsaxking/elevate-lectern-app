@@ -377,12 +377,12 @@ class System:
             while self.on:
                 state = UDPSystemState(
                     sensors=self.sensors.read(),
-                    motor_speed=self.motor.speed / MAX_SPEED,
+                    motor_speed=round(self.motor.speed / MAX_SPEED, SIG_FIGS),
                     state=self.state.to_dict(),
                     command_ready=self.command_ready,
                     gpio_moving=self.gpio_moving,
-                    target_speed=self.target_motor_speed,
-                    gpio_target_motor_speed=self.gpio_target_motor_speed,
+                    target_speed=round(self.target_motor_speed, SIG_FIGS),
+                    gpio_target_motor_speed=round(self.gpio_target_motor_speed, SIG_FIGS),
                     queue_length = self.Q.qsize(),
                     target_pos=self.target_pos,
                     start_pos=self.start_pos,
