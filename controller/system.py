@@ -261,7 +261,7 @@ class System:
             show_id = int(p[0])
             preset_id = int(p[1])
             def load_json_async():
-                with open(f'./json/show-{show_id}.json', 'r') as file:
+                with open(f'../json/show-{show_id}.json', 'r') as file:
                     data: Show = json.load(file)
                     for p in data['presets']:
                         if p['id'] == preset_id:
