@@ -1,0 +1,27 @@
+{
+  "id": 0,
+  "name": "Test",
+  "presets": [
+    {
+      "name": "Preset 1",
+      "state": {
+        "height": 4
+      },
+      "id": 1
+    },
+    {
+      "name": "Preset 2",
+      "state": {
+        "height": 30
+      },
+      "id": 2
+    },
+    {
+      "name": "t",
+      "state": {
+        "height": 40
+      },
+      "id": 3
+    }
+  ]
+}

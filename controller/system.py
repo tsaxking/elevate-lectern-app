@@ -13,16 +13,14 @@ messages. However, a single TCP connection is used to handle emergency stop comm
 the current operation, delete all commands in the queue, and stop the motor.
 '''
 
-from motor import Motor, MotorConfig, MotorState
+from motor import Motor, MotorState
 from typing import TypedDict
 from RPi import GPIO
 from sensors import Switch, Potentiometer, Ultrasonic, UltrasonicConfig
 from time import sleep
 from enum import Enum, auto
-# import queue
 from Q import Queue
 from osc import Command, OSC_Server, OSC_Config
-from osc_client import start_test_client
 import threading
 import socket
 import json
@@ -32,8 +30,7 @@ import sys
 from led import LED, Brightness, FlashingSpeed
 from preset import Preset, Show
 import select
-# import numpy as np
-from utils import round, do_while
+from utils import round
 import math
 
 
@@ -643,50 +640,4 @@ class System:
 
     
 
-def main():
-    motor = Motor(MotorConfig(
-        pin=18,
-        max=2000,
-        min=1000,
-        zero=1500,
-        invert=False,
-        tick_speed=TICK_SPEED,
-        acceleration=ACCEL_RATE
-    ))
-    motor.disable()
-    sleep(0.5)
-    system = System(motor, SystemConfig(
-        position_pin=0,
-        tick_speed=TICK_SPEED,
-        max_limit_pin=26,
-        min_limit_pin=26,
-        power_pin=3,
-        main_up_pin=5,
-        main_down_pin=6,
-        log_state=False,
-        secondary_up_pin=6,
-        secondary_down_pin=7,
-        main_speed_channel=0,
-        secondary_speed_channel=1,
-        status_led_pin=16,
-        osc_led_pin=12,
-        trigger_pin=20,
-        echo_pin=21
-    ))
-    system.event_loop()
 
-    def on_exit():
-        motor.disable()
-        system.cleanup()
-        print('Exiting')
-
-
-    def handle_signal(num: int, frame):
-        print(f"Signal {num} received")
-        sys.exit(0)
-
-    atexit.register(on_exit)
-    signal.signal(signal.SIGINT, handle_signal)
-
-if __name__ == "__main__":
-    main()

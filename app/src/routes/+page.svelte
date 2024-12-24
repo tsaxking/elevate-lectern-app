@@ -1,54 +1,35 @@
-<script lang="ts">
-    type Preset = {
-        name: string;
-        height: number;
-    };
-    type State = {
-        height: number;
-        presets: Preset[];
-        currentPreset?: Preset;
+<script>
+    import { Show } from "$lib/stores/show";
 
-        presetName: string;
-    };
+    const shows = Show.getAll();
 
-    const state = $state<State>({
-        height: 0,
-        presets: [
-            { name: 'Taylor', height: 100 },
-            { name: 'Jake', height: 200 },
-            { name: 'Conner', height: 300 },
-        ],
-        presetName: '',
-    });
-
-    const increment = (num: number) => {
-        state.height += num;
-        state.currentPreset = undefined;
+    const createNew = () => {
+        const name = prompt('Enter Show Name');
+        if (!name) return;
+        Show.new({
+            name,
+            presets: []
+        });
     };
 </script>
 
-<h1>Current height: {state.height}</h1>
-<div role="group" class="btn-group">
-    <button type="button" class="btn btn-success" onclick={() => increment(1)}>Up</button>
-    <button type="button" class="btn btn-danger" onclick={() => increment(-1)}>Down</button>
+<button type="button" class="btn btn-primary" onclick={createNew}>New</button>
+
+<div class="container">
+    {#each $shows as show}
+        <div class="row mb-3">
+            <a href="/show/{show.id}" class="text-decoration-none">
+                <div class="card bg-secondary p-0">
+                    <div class="card-header">
+                        <h5>{show.name}</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Presets: {show.presets.length}
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    {/each}
 </div>
-
-{#each state.presets as preset}
-    <button type="button" class="btn btn-secondary" onclick={() => {
-        state.height = preset.height;
-        state.currentPreset = preset;
-    }}>{preset.name}</button>
-{/each}
-
-{#if state.currentPreset && state.height === state.currentPreset.height}
-    <p class="alert alert-success">You are at the preset height of {state.currentPreset.name}</p>
-{/if}
-
-<!-- {#if !state.currentPreset} -->
-    <input type="text" class="form-control" bind:value={state.presetName} placeholder="Enter a name" />
-    <button type="button" class="btn btn-primary" onclick={() => {
-        if (!state.presetName) return;
-        state.presets.push({ name: state.presetName, height: state.height });
-        state.presetName = '';
-    }}>Add Preset</button>
-<!-- {/if} -->
