@@ -1,5 +1,6 @@
 from motor import Motor, MotorConfig
 from system import System, SystemConfig
+from RPi import GPIO
 from time import sleep
 import sys
 import atexit
@@ -8,6 +9,7 @@ import signal
 TICK_SPEED = 15
 
 def main():
+    GPIO.setmode(GPIO.BCM)
     motor = Motor(MotorConfig(
         pin=18,
         max=2000,
@@ -35,10 +37,6 @@ def main():
         trigger_pin=20,
         echo_pin=21
     ))
-    system.stop()
-    sleep(1)
-    system.event_loop()
-
     def on_exit():
         motor.disable()
         system.cleanup()
@@ -47,10 +45,18 @@ def main():
 
     def handle_signal(num: int, frame):
         print(f"Signal {num} received")
-        sys.exit(0)
+        on_exit()
 
     atexit.register(on_exit)
     signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+
+    try:
+        system.stop()
+        sleep(1)
+        system.event_loop()
+    finally:
+        on_exit()
 
 if __name__ == '__main__':
     main()

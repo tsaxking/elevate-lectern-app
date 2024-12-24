@@ -24,14 +24,12 @@ from osc import Command, OSC_Server, OSC_Config
 import threading
 import socket
 import json
-import atexit
-import signal
-import sys
 from led import LED, Brightness, FlashingSpeed
 from preset import Preset, Show
 import select
 from utils import round
 import math
+from pyee import EventEmitter
 
 
 def clear():
@@ -443,7 +441,7 @@ class System:
 
 
 
-    def calibrate(self):
+    def calibrate(self, emitter: EventEmitter):
         print('Starting calibration')
         self.global_state = GlobalState.CALIBRATING
         max_speed = .5
@@ -501,12 +499,33 @@ class System:
         print('Calibration complete')
         print(f'Results: {self.calibration.__dict__}')
         self.global_state = GlobalState.RUNNING
+        emitter.emit('complete')
 
     def start_up(self):
+        emitter = EventEmitter()
         self.global_state = GlobalState.STARTUP
-        thread = threading.Thread(target=self.calibrate)
+        thread = threading.Thread(target=self.calibrate, args=(emitter,))
         thread.daemon = True
         thread.start()
+        return emitter
+
+    def shut_down(self):
+        emitter = EventEmitter()
+        def run_shutdown():
+            self.set_speed(-1)
+            while self.on and not self.sensors.min_limit.read():
+                sleep(TICK_SPEED / 1000)
+            self.stop()
+            self.cleanup()
+            emitter.emit('shutdown')
+            
+
+        self.global_state = GlobalState.SHUTDOWN
+        thread = threading.Thread(target=run_shutdown)
+        thread.daemon = True
+        thread.start()
+
+        return emitter
 
     def event_loop(self):
         self.start_up()
