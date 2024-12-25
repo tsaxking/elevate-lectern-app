@@ -27,7 +27,7 @@
     <ShowBanner {show} />
     <div class="container-fluid p-3 py-0 vh-100 w-100">
         <div class="row h-100">
-            <div class="col-8">
+            <div class="col-lg-8 col-md-12">
                 <div class="container-fluid m-0 p-0">
                     <div class="row mb-2">
                         <SystemMonitor />
@@ -40,7 +40,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-4 h-100 px-1">
+            <div class="col-lg-4 col-md-12 h-100 px-1">
                 <SystemControl bind:show={show} />
             </div>
         </div>
