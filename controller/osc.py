@@ -7,11 +7,8 @@ from pythonosc import osc_server
 import threading
 
 from typing import TypedDict, Any
-from Q import Queue
+from Q import Queue, Command
 
-class Command(TypedDict):
-    command: str
-    args: Any
 
 # def server(queue: Queue, ip: str, port: int):
 #     parser = argparse.ArgumentParser()

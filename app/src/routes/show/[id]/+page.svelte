@@ -1,5 +1,4 @@
 <script lang="ts">
-    import '$lib/imports.js';
 	import { system } from '$lib/stores/system.js';
 
     const { data } = $props();

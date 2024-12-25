@@ -41,6 +41,7 @@ def main():
         motor.disable()
         system.cleanup()
         print('Exiting')
+        exit()
 
 
     def handle_signal(num: int, frame):

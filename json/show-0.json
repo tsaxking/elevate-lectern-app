@@ -3,25 +3,33 @@
   "name": "Test",
   "presets": [
     {
-      "name": "Preset 1",
+      "name": "My Preset 1",
       "state": {
-        "height": 4
+        "height": 12
       },
       "id": 1
     },
     {
-      "name": "Preset 2",
-      "state": {
-        "height": 30
-      },
-      "id": 2
-    },
-    {
-      "name": "t",
+      "name": "Big Preset",
       "state": {
         "height": 40
       },
       "id": 3
+    },
+    {
+      "name": "New Preset",
+      "state": {
+        "height": 73.82
+      },
+      "id": 4
+    },
+    {
+      "name": "Hello World",
+      "state": {
+        "height": 14.96
+      },
+      "id": 5
     }
-  ]
+  ],
+  "color": "#072bdf"
 }

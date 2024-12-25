@@ -10,7 +10,7 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"typeRoots": ["./src/types/**", "node_modules/@types"]
+		"typeRoots": ["./src/types/**", "node_modules/@types", "node_modules/@types/bootstrap"]
 	}
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
 	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files

@@ -38,12 +38,14 @@ export class Show {
     public readonly id: number;
     public name: string;
     public presets: PresetConfig[];
+    public color: string;
     
     constructor(data: ShowConfig) {
         this.id = data.id;
         this.name = data.name;
         // this.presets = data.presets.map(p => new Preset(p, this));
         this.presets = data.presets;
+        this.color = data.color;
     }
 
     addPreset(preset: PresetConfig) {
@@ -69,13 +71,15 @@ export class Show {
         return {
             id: this.id,
             name: this.name,
-            presets: this.presets
+            presets: this.presets,
+            color: this.color,
         };
     }
 
     update(data: ShowConfig) {
         this.name = data.name;
         this.presets = data.presets.map(p => p);
+        this.color = data.color;
         return this.save(true);
     }
 

@@ -19,8 +19,8 @@ from RPi import GPIO
 from sensors import Switch, Potentiometer, Ultrasonic, UltrasonicConfig
 from time import sleep
 from enum import Enum, auto
-from Q import Queue
-from osc import Command, OSC_Server, OSC_Config
+from Q import Queue, Command
+from osc import OSC_Server, OSC_Config
 import threading
 import socket
 import json
@@ -112,6 +112,8 @@ class UDPSystemState(TypedDict):
     gpio_moving: bool
     gpio_target_motor_speed: float
     motor_state: MotorState
+    proximity_up: float
+    proximity_down: float
 
 class Sensors:
     def __init__(self, config: SystemConfig):
@@ -186,7 +188,6 @@ class CalibrationState(Enum):
 
 class Calibration:
     def __init__(self):
-        self.i_am = 'calibration'
         self.top = 0
         self.bottom = 0
         self.velocity = 0
@@ -222,6 +223,7 @@ class System:
         self.on = True
         self.calibration_state = CalibrationState.NOT_CALIBRATED
         self.calibration = Calibration()
+        self.current_command = None
         # self.max = 1
         # self.min = 0
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -320,6 +322,7 @@ class System:
                         self.stop()
                         break
                     if command['command'] == '/preset':
+                        self.command_ready = False
                         self.go_to_preset(command['args'][0])
                         break
                 sleep(TICK_SPEED / 1000)
@@ -329,6 +332,7 @@ class System:
             while self.on:
                 command = self.Q.get()
                 if command:
+                    self.current_command = command
                     run_command(command)
                 sleep(TICK_SPEED / 1000)
 
@@ -371,33 +375,39 @@ class System:
 
     def emit_state(self):
         def run():
-            calibration_sent = False
+            # calibration_sent = False
             while self.on:
+                S = self.sensors.read()
                 state = UDPSystemState(
-                    sensors=self.sensors.read(),
+                    sensors=S,
                     motor_speed=round(self.motor.speed / MAX_SPEED, SIG_FIGS),
                     state=self.state.to_dict(),
                     command_ready=self.command_ready,
                     gpio_moving=self.gpio_moving,
                     target_speed=round(self.target_motor_speed, SIG_FIGS),
                     gpio_target_motor_speed=round(self.gpio_target_motor_speed, SIG_FIGS),
-                    queue_length = self.Q.qsize(),
-                    target_pos=self.target_pos,
-                    start_pos=self.start_pos,
-                    velocity=self.velocity,
+                    backlog = self.Q.to_dict()['queue'],
+                    current_command = self.current_command,
+                    target_pos=round(self.target_pos, SIG_FIGS),
+                    start_pos=round(self.start_pos, SIG_FIGS),
+                    velocity=round(self.velocity, SIG_FIGS),
                     motor_state=self.motor.state.to_dict(),
-                    global_state=self.global_state.to_dict()
+                    global_state=self.global_state.to_dict(),
+                    proximity_up=round(self.calibration.top - S['position'], SIG_FIGS), #if self.calibration_state == CalibrationState.DONE and abs(self.calibration.top - S['position']) <= LIMIT_SLOW_DOWN_DISTANCE else 9999,
+                    proximity_down=round(S['position'] - self.calibration.bottom, SIG_FIGS), #if self.calibration_state == CalibrationState.DONE and abs(S['position'] - self.calibration.bottom) <= LIMIT_SLOW_DOWN_DISTANCE else -9999,
+                    calibration=self.calibration.__dict__,
+                    speed_multiplier=round(self.speed_multiplier, SIG_FIGS)
                 )
                 self.socket.sendto(
                     json.dumps(state).encode('utf-8'),
                     ('taylorpi.local', UDP_PORT)
                 )
-                if not calibration_sent and self.calibration_state == CalibrationState.DONE:
-                    self.socket.sendto(
-                        json.dumps(self.calibration.__dict__).encode('utf-8'),
-                        ('taylorpi.local', UDP_PORT)
-                    )
-                    calibration_sent = True
+                # if not calibration_sent and self.calibration_state == CalibrationState.DONE:
+                #     self.socket.sendto(
+                #         json.dumps(self.calibration.__dict__).encode('utf-8'),
+                #         ('taylorpi.local', UDP_PORT)
+                #     )
+                #     calibration_sent = True
                 sleep(UDP_TICK_SPEED / 1000)
 
         t = threading.Thread(target=run)
@@ -535,6 +545,7 @@ class System:
         self.osc.start()
         self.emit_state()
         self.command_handler()
+        prev_pos = None
         while self.on:
             sensors = self.sensors.read()
             # print(f'GPIOMOVING: {self.gpio_moving}')
@@ -608,6 +619,7 @@ class System:
                     self.target_pos = -1
                     self.start_pos = -1
                     distance_to_target = 0
+                    self.command_ready = True
 
                 slow_down = abs(distance_to_target) - SLOW_DOWN_DISTANCE if abs(distance_to_target) < SLOW_DOWN_DISTANCE else 0
                 if distance_to_target > 0 and not reached:
@@ -653,6 +665,12 @@ class System:
                 self.stop()
 
             self.set_led_state()
+
+            if prev_pos:
+                # TODO: throw away velocity based on the calibration state and motor speed
+                self.velocity = sensors['position'] - prev_pos
+
+            prev_pos = sensors['position']
 
             sleep(TICK_SPEED / 1000)
 

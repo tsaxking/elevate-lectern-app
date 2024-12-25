@@ -1,5 +1,6 @@
 {
   "id": 1,
   "name": "Test2",
-  "presets": []
+  "presets": [],
+  "color": "#1cd431"
 }

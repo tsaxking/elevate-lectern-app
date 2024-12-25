@@ -1,6 +1,7 @@
 export type ShowConfig = {  
     id: number;
     name: string;
+    color: string;
     presets: PresetConfig[];
 }
 
@@ -17,6 +18,11 @@ export type State = {
 type States = 'STAND_BY' | 'MOVING' | 'ACCELERATING' | 'LOCK' | 'UNKNOWN';
 
 type MotorState = 'STAND_BY' | 'RUNNING' | 'STOPPING' | 'STOPPED' | 'CALIBRATING' | 'TESTING' | 'UNKNOWN';
+
+export type Command = {
+    command: string;
+    args: (string|number)[];
+}
 
 export type SystemState = {
     system: {    
@@ -39,12 +45,17 @@ export type SystemState = {
         target_speed: number;
         gpio_moving: boolean;
         gpio_target_motor_speed: number;
-        queue_length: number;
         target_pos: number;
         start_pos: number;
         velocity: number;
         motor_state: MotorState;
         global_state: 'SHUTDOWN' | 'STARTUP' | 'CALIBRATING' | 'RUNNING' | 'UNKNOWN';
+        proximity_up: number;
+        proximity_down: number;
+        calibration: Calibration;
+        speed_multiplier: number;
+        backlog: Command[],
+        current_command: Command | undefined;
     };
     os_info: {
         ip_address: string;
@@ -52,12 +63,14 @@ export type SystemState = {
         cpu_temp: number;
         updated: number;
         ram: number;
+        osc: number;
+        tcp: number;
+        udp: number;
     };
     connected: boolean;
 };
 
 export type Calibration = {
-    i_am: 'calibration';
     top: number;
     bottom: number;
     velocity: number;

@@ -1,12 +1,12 @@
 <script lang="ts">
-    import '$lib/imports.js';
 	import { $Math as M } from "$lib/math.js";
     import { system } from "$lib/stores/system.js";
     import { send } from "$lib/osc.js";
 	import { BootstrapColor } from "$lib/types.js";
     import State from "$lib/components/State.svelte";
-	import OsInfo from "$lib/components/OSInfo.svelte";
-    import { calibration } from '$lib/stores/calibration.js';
+	import OsChart from "$lib/components/OS_Chart.svelte";
+    // import { calibration } from '$lib/stores/calibration.js';
+    import MotorState from "$lib/components/MotorState.svelte";
 
 
     const { data } = $props();
@@ -101,39 +101,25 @@
 
 <pre>
 {JSON.stringify($system, null, 4)}
-{JSON.stringify($calibration, null, 4)}
+<!-- {JSON.stringify($calibration, null, 4)} -->
 </pre>
 
 <div style="width: 100%; height: 300px;">
-    <OsInfo />
+    <OsChart />
 </div>
-<State />
+<!-- <State /> -->
 
-{#if $system.connected}
-    <div class="container">
-        <div class="row">
-            <div class="col-8">
-                <div class="container-fluid">
-                    <div class="row">
-                        <label for="motor-speed-actual" class="form-label">Current Motor Speed: {M.roundTo(3, $system.system.motor_speed * 100)}%</label>
-                        <input id="motor-speed-actual" type="range" class="form-control" min="{-1}" max="{1}" step="{0.001}" bind:value={$system.system.motor_speed} disabled={true}/>
-                    </div>
-                    <div class="row">
-                        {#each buttons as button}
-                            <div class="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-1 my-2">
-                                <button type="button" class="square w-100 btn btn-{button.color}" onclick={button.action}>
-                                    {button.name}
-                                </button>
-                            </div>
-                        {/each}
-                    </div>
-                    <div class="row">
-                        <div class="col">
-                            <div class="d-flex">
-                                <span class="me-2"><i class="material-icons"></i></span>
-                            </div>
-                                <label for="motor-speed" class="form-label">Motor Control: {M.roundTo(3, motorSpeed * 100)}%</label>
-                                <input id="motor-speed" type="range" class="form-control" min="{-1}" max="{1}" step="{0.001}" bind:value={motorSpeed} oninput={() => {
+<div class="container">
+    <div class="row">
+        <div class="card p-0">
+            <div class="card-body p-2">
+                {#if $system.connected}
+                    <div class="container-fluid">
+                        <div class="row" style="height: 30px;">
+                            <MotorState />
+                        </div>
+                        <div class="row m-0 p-0">
+                                <input id="motor-speed" type="range" class="form-range" min="{-1}" max="{1}" step="{0.001}" bind:value={motorSpeed} oninput={() => {
                                     clearTimeout(timeout);
                                     timeout = setTimeout(() => {
                                         commit();
@@ -143,33 +129,50 @@
                                     motorSpeed = 0;
                                 }} />
                         </div>
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="container-fluid">
+                                    <div class="row">
+                                        {#each buttons as button}
+                                            <div class="col-6 col-sm-4 col-md-3 col-lg-2 col-xl-1 my-2">
+                                                <button type="button" class="square w-100 btn btn-{button.color}" onclick={button.action}>
+                                                    {button.name}
+                                                </button>
+                                            </div>
+                                        {/each}
+                                    </div>
+       
+                                </div>
+                            </div>
+                            <div class="col-4 h-100">
+                                <div class="container-fluid h-100">
+                                    <div class="row h-100">
+                                        <label for="height-actual" class="form-label">Current Height: {M.roundTo(3, $system.system.sensors.position)}cm</label>
+                                        <input id="height-actual" type="range" class="form-control" min="{0}" max="{100}" step="{0.001}" bind:value={$system.system.sensors.position} disabled={true}/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-4 h-100">
-                <div class="container-fluid h-100">
-                    <div class="row h-100">
-                        <label for="height-actual" class="form-label">Current Height: {M.roundTo(3, $system.system.sensors.position)}cm</label>
-                        <input id="height-actual" type="range" class="form-control" min="{0}" max="{100}" step="{0.001}" bind:value={$system.system.sensors.position} disabled={true}/>
+                {:else}
+                    <div class="container">
+                        <div class="row">
+                            <div class="col">
+                                <div class="card bg-danger">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Not Connected</h5>
+                                        <p class="card-text">The system is not connected. Please ensure the control program is running properly</p>
+                                    </div> 
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                {/if}
             </div>
         </div>
+        
     </div>
-{:else}
-    <div class="container">
-        <div class="row">
-            <div class="col">
-                <div class="card bg-danger">
-                    <div class="card-body">
-                        <h5 class="card-title">Not Connected</h5>
-                        <p class="card-text">The system is not connected. Please ensure the control program is running properly</p>
-                    </div> 
-                </div>
-            </div>
-        </div>
-    </div>
-{/if}
+</div>
 
 <style>
     .hidden {

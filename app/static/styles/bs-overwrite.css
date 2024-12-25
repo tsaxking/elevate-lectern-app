@@ -10,6 +10,8 @@
     --border-radius: 8px;
 
     --navbar-height: 1.75rem;
+
+    --dashboard-card-title-height: 27.75px;
 }
 
 .modal {
@@ -22,16 +24,16 @@
 }
 
 .modal-content {
-    /* border: none !important; */
+    border: none !important;
     /* border-radius: 0px !important; */
 }
 
 .modal-footer * {
-    /* margin: 0; */
+    margin: 0;
 }
 
 .modal-footer .btn {
-    /* padding: 0.25rem 0.5rem; */
+    padding: 0.25rem 0.5rem;
 }
 
 hr {
@@ -46,6 +48,13 @@ p {
 button,
 .form-control,
 .form-select,
-.card {
-    border-radius: 0 !important;
+.list-group,
+.card,
+.modal-content {
+    border-radius: 2px !important;
+}
+
+
+.card *, .card {
+    /* border-color: var(--bs-dark) !important; */
 }

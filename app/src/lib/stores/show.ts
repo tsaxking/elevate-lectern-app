@@ -1,20 +1,78 @@
 import { type Writable, writable } from "svelte/store";
 import { listen, send } from "../sse";
 import type { ShowConfig, PresetConfig } from "../types";
-import { attemptAsync } from "../check";
+import { attemptAsync, type Result } from "../check";
 
 
-export const shows = writable<Show[]>([]);
+class ShowArr implements Writable<Show[]> {
+    public readonly shows: Show[] = [];
+    private readonly subscribers = new Set<(data: Show[]) => void>();
+
+    constructor(data: Show[]) {
+        this.shows.push(...data);
+    }
+
+    set(data: Show[]) {
+        this.shows.splice(0, this.shows.length, ...data);
+        this.subscribers.forEach(fn => fn(data));
+    }
+
+    update(fn: (data: Show[]) => Show[]) {
+        this.set(fn(this.shows));
+    }
+
+    subscribe(fn: (data: Show[]) => void) {
+        fn(this.shows);
+        this.subscribers.add(fn);
+        return () => this.subscribers.delete(fn);
+    }
+
+    // await() {
+    //     return new Promise<Show[]>((res, rej) => {
+    //         let resolved = false;
+    //         const resolve = (data: Show[]) => {
+    //             if (!resolved) {
+    //                 resolved = true;
+    //                 res(data);
+    //             }
+    //         }
+            
+    //         const u = this.subscribe(resolve);
+
+    //         setTimeout(() => {
+    //             if (!resolved) {
+    //                 console.log('Timeout');
+    //                 resolved = true;
+    //                 rej("Timeout");
+    //                 u();
+    //             }
+    //         }, 1000 * 10);
+    //     });
+    // }
+}
+
+const shows = new ShowArr([]);
+
 
 export class Show implements Writable<ShowConfig> {
-    public static getAll() {
-        (async () => {
-            attemptAsync(async () => {
+    public static getAll(asWritable: false): Promise<Result<Show[]>>;
+    public static getAll(asWritable: true): ShowArr;
+    public static getAll(asWritable: boolean): Promise<Result<Show[]>> | ShowArr {
+        if (asWritable) {
+            (async () => {
+                attemptAsync(async () => {
+                    const s = (await send('getAllShows', undefined)).unwrap();
+                    const allShows = (s as ShowConfig[]).map(s => new Show(s));
+                    shows.set(allShows);
+                });
+            })();
+            return new ShowArr([]);
+        } else {
+            return attemptAsync(async () => {
                 const s = (await send('getAllShows', undefined)).unwrap();
                 return (s as ShowConfig[]).map(s => new Show(s));
             });
-        })();
-        return shows;
+        }
     }
 
     public static new(data: Omit<ShowConfig, 'id'>) {
@@ -34,9 +92,11 @@ export class Show implements Writable<ShowConfig> {
     public readonly id: number;
     public name: string;
     public presets: PresetConfig[];
+    public color: string;
     constructor(config: ShowConfig) {
         this.id = config.id;
         this.name = config.name;
+        this.color = config.color;
         // this.presets = config.presets.map(p => new Preset(p, this));
         this.presets = config.presets;
 
@@ -51,6 +111,7 @@ export class Show implements Writable<ShowConfig> {
     set(data: ShowConfig) {
         this.name = data.name;
         this.presets = data.presets;
+        this.color = data.color;
         this.subscribers.forEach(fn => fn(data));
     }
 
@@ -68,7 +129,7 @@ export class Show implements Writable<ShowConfig> {
         this.set({
             ...this,
             presets: [...this.presets, preset],
-        })
+        });
         this.save();
     }
 
@@ -84,7 +145,8 @@ export class Show implements Writable<ShowConfig> {
         return {
             id: this.id,
             name: this.name,
-            presets: this.presets
+            presets: this.presets,
+            color: this.color,
         };
     }
 

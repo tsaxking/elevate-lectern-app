@@ -5,7 +5,7 @@ import sys from 'systeminformation';
 import { $Math } from '$lib/math';
 import { nowSmall } from '$lib/clock';
 
-const server = dgram.createSocket('udp4');
+const socket = dgram.createSocket('udp4');
 
 const os_info = {
     cpu_usage: 0,
@@ -13,6 +13,9 @@ const os_info = {
     ip_address: 'taylorpi.local',
     ram: 0,
     updated: Date.now(),
+    osc: 12321,
+    tcp: 11111,
+    udp: 41234,
 };
 
 
@@ -35,17 +38,18 @@ setInterval(async () => {
 }, 1000 * 10);
 
 let system: unknown,
-    lastMessage = 0;
+    lastMessage = 0,
+    calibration: unknown;
 
-server.on('message', (msg, rinfo) => {
+socket.on('message', (msg, rinfo) => {
     // if (rinfo.address !== '127.0.0.1') return; // Only allow local connections
     try {
         const data = JSON.parse(msg.toString());
-        if (data.i_am === 'calibration') {
-            sse.send('calibration', data);
-        } else {
+        // if (data.i_am === 'calibration') {
+        //     calibration = data;
+        // } else {
             system = data;
-        }
+        // }
         lastMessage = Date.now();
     } catch (error) {
         console.error(error);
@@ -55,7 +59,7 @@ server.on('message', (msg, rinfo) => {
     // console.log(`server got: ${JSON.stringify(data, null, 4)}`);
 });
 
-server.on('error', (err) => {
+socket.on('error', (err) => {
     console.error(`Server error:\n${err.stack}`);
     // server.close();
 });
@@ -70,6 +74,16 @@ setInterval(() => {
         system = undefined;
     }
 }, 10);
+
+// setInterval(() => {
+//     if (calibration) {
+//         sse.send('calibration', calibration);
+//     }
+// }, 1000);
   
 
-server.bind(41234);
+socket.bind(41234);
+
+process.on('exit', () => {
+    socket.close();
+});

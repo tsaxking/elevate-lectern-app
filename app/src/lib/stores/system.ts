@@ -34,6 +34,9 @@ export const system = new System({
         cpu_usage: NaN,
         ram: NaN,
         updated: 0,
+        osc: NaN,
+        tcp: NaN,
+        udp: NaN
     },
     system: {
         motor_speed: NaN,
@@ -42,12 +45,21 @@ export const system = new System({
         command_ready: false,
         gpio_moving: false,
         gpio_target_motor_speed: NaN,
-        queue_length: NaN,
         target_pos: NaN,
         start_pos: NaN,
         velocity: NaN,
         motor_state: 'UNKNOWN',
         global_state: 'UNKNOWN',
+        proximity_up: NaN,
+        proximity_down: NaN,
+        speed_multiplier: NaN,
+        calibration: {
+            top: NaN,
+            bottom: NaN,
+            velocity: NaN
+        },
+        backlog: [],
+        current_command: undefined,
 
         sensors: {
             position: NaN,
