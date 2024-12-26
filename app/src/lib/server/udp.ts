@@ -42,7 +42,7 @@ let system: unknown,
     calibration: unknown;
 
 socket.on('message', (msg, rinfo) => {
-    // if (rinfo.address !== '127.0.0.1') return; // Only allow local connections
+    // if (rinfo.address !== 'taylorpi.local') return; // Only allow local connections
     try {
         const data = JSON.parse(msg.toString());
         // if (data.i_am === 'calibration') {

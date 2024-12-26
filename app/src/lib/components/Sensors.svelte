@@ -45,7 +45,7 @@ const determineStr = (number: number) => {
     <Range value={num} {max} {min} step={.01} disabled={true}/>
 {/snippet}
 
-<div class="card p-0 shadow">
+<div class="card p-0 glow">
     <div class="card-header">
         <h5 class="card-title dashboard-title">Sensors</h5>
     </div>

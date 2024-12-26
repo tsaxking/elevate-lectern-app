@@ -303,7 +303,7 @@ class System:
                 if self.command_ready:
                     print(f"running command {command}")
                     if command['command'] == '/move':
-                        self.set_speed(command['args'][0])
+                        self.set_speed(float(command['args'][0]))
                         self.command_ready = True
                         break
                     if command['command'] == '/stop':
@@ -333,7 +333,12 @@ class System:
                 command = self.Q.get()
                 if command:
                     self.current_command = command
-                    run_command(command)
+                    try:
+                        run_command(command)
+                    except Exception as e:
+                        print(f"Error running command {command} - {e}")
+                        self.stop()
+                        self.command_ready = True
                 sleep(TICK_SPEED / 1000)
 
         def e_stop_server():

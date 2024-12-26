@@ -15,7 +15,7 @@ export type Events = {
 
 export type OscCommands = {
     test: [1, 2, 3];
-    move: number;
+    move: number | string;
     stop: void;
     go_to: number;
     bump: number;

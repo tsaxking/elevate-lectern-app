@@ -51,22 +51,23 @@ class ShowArr implements Writable<Show[]> {
     // }
 }
 
-const shows = new ShowArr([]);
+const shows: Show[] = $state([]);
 
 
 export class Show implements Writable<ShowConfig> {
     public static getAll(asWritable: false): Promise<Result<Show[]>>;
-    public static getAll(asWritable: true): ShowArr;
-    public static getAll(asWritable: boolean): Promise<Result<Show[]>> | ShowArr {
+    public static getAll(asWritable: true): Show[];
+    public static getAll(asWritable: boolean): Promise<Result<Show[]>> | Show[] {
         if (asWritable) {
             (async () => {
                 attemptAsync(async () => {
+                    if (shows.length) return;
                     const s = (await send('getAllShows', undefined)).unwrap();
                     const allShows = (s as ShowConfig[]).map(s => new Show(s));
-                    shows.set(allShows);
+                    shows.push(...allShows);
                 });
             })();
-            return new ShowArr([]);
+            return shows;
         } else {
             return attemptAsync(async () => {
                 const s = (await send('getAllShows', undefined)).unwrap();
@@ -100,10 +101,10 @@ export class Show implements Writable<ShowConfig> {
         // this.presets = config.presets.map(p => new Preset(p, this));
         this.presets = config.presets;
 
-        shows.update(s => [
-            ...s,
-            this
-        ].filter((v, i, a) => a.findIndex(v2 => v2.id === v.id) === i));
+        // shows.update(s => [
+        //     ...s,
+        //     this
+        // ].filter((v, i, a) => a.findIndex(v2 => v2.id === v.id) === i));
     }
 
     private readonly subscribers = new Set<(data: ShowConfig) => void>();
@@ -153,19 +154,28 @@ export class Show implements Writable<ShowConfig> {
     nextPresetId() {
         return Math.max(...this.presets.map(p => p.id), 0) + 1;
     }
+
+    delete() {
+        return send('deleteShow', this.id);
+    }
 }
 
 listen('newShow', (data) => {
-    new Show(data);
+    console.log('Received new show', data);
+    const show = new Show(data);
+    shows.push(show);
+    // shows.update(s => [...s, show]);
 });
 
 listen('updateShow', (data) => {
-    shows.update(s => s.map(s => {
-        if (s.id === data.id) s.set(data);
-        return s;
-    }));
+    // shows.update(s => s.map(s => {
+    //     if (s.id === data.id) s.set(data);
+    //     return s;
+    // }));
+    shows.find(s => s.id === data.id)?.set(data);
 });
 
 listen('deleteShow', (id) => {
-    shows.update(s => s.filter(s => s.id !== id));
+    // shows.update(s => s.filter(s => s.id !== id));
+    shows.splice(shows.findIndex(s => s.id === id), 1);
 });

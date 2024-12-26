@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { Show } from "$lib/stores/show";
+	import { Show } from "$lib/stores/show.svelte";
     import { system } from "$lib/stores/system";
 	import { BootstrapColor, type PresetConfig } from "$lib/types.js";
     import { send } from "$lib/osc.js";
     import Modal from "./Modal.svelte";
     import { goto } from "$app/navigation";
 	import { confirm, prompt, select } from "$lib/prompts.svelte";
+	import { $Math as M } from "$lib/math";
 
 
     interface Props {
@@ -113,7 +114,8 @@
 
     let motorSpeed = $state(0);
     const commit = () => {
-        send('move', motorSpeed);
+        // const num = M.roundTo(3, motorSpeed);
+        send('move', motorSpeed.toFixed(3));
     };
 
     let timeout: NodeJS.Timeout;
@@ -122,7 +124,7 @@
     let currentPreset: PresetConfig | null = $state(null);
 </script>
 
-<div class="card p-0 shadow h-100">
+<div class="card p-0 glow h-100">
     <div class="card-header">
         <h5 class="card-title dashboard-title">System Control</h5>
     </div>

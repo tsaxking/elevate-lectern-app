@@ -56,5 +56,5 @@ button,
 
 
 .card *, .card {
-    /* border-color: var(--bs-dark) !important; */
+    border-color: var(--bs-dark) !important;
 }

@@ -44,11 +44,13 @@ const createModalBody = (message: string) => createRawSnippet(() => ({
 
 
 type PromptConfig = {
+    default?: string;
     title?: string;
-    password?: boolean;
     placeholder?: string;
     multiline?: boolean;
     validate?: (value: string) => boolean;
+    type?: 'text' | 'password' | 'number';
+    parser?: (value: string) => string;
 };
 export const prompt = async (message: string, config?: PromptConfig) => {
     return new Promise<string | null>((res, rej) => {
@@ -68,12 +70,16 @@ export const prompt = async (message: string, config?: PromptConfig) => {
                             ${
                                 config?.multiline
                                     ? `<textarea data-id="input" class="form-control" placeholder="${config?.placeholder || ""}"></textarea>`
-                                    : `<input data-id="input" type="${config?.password ? "password" : "text"}" class="form-control" placeholder="${config?.placeholder || ""}">`
+                                    : `<input data-id="input" type="${config?.type || 'text'}" class="form-control" placeholder="${config?.placeholder || ""}">`
                             }
                         </div>
                     `,
                     setup: (el) => {
                         const input = el.querySelector("input") || el.querySelector("textarea");
+                        if (config?.default && input) {
+                            input.value = config.default;
+                            config.default = undefined;
+                        }
                         input?.addEventListener("input", (e) => {
                             value = (e.target as HTMLInputElement).value;
                             valid = !config?.validate || config.validate(value);
@@ -96,7 +102,7 @@ export const prompt = async (message: string, config?: PromptConfig) => {
                         onClick: () => {
                             if (!valid) return;
                             modal.hide();
-                            res(value);
+                            res(config?.parser ? config.parser(value.trim()) : value.trim());
                         }
                     }
                 ])
@@ -288,6 +294,7 @@ export const alert = async (message: string, config?: AlertConfig) => {
 
 type ColorPickerConfig = {
     title?: string;
+    default?: string;
 }
 export const colorPicker = async (message: string, config?: ColorPickerConfig) => {
     return new Promise<string | null>((res, rej) => {
@@ -307,6 +314,11 @@ export const colorPicker = async (message: string, config?: ColorPickerConfig) =
                         </div>
                     `,
                     setup: (el) => {
+                        if (config?.default) {
+                            el.querySelector("input")?.setAttribute("value", config.default);
+                            selected = config.default;
+                            config.default = undefined;
+                        }
                         el.querySelector("input")?.addEventListener("input", (e) => {
                             selected = (e.target as HTMLInputElement).value;
                         });

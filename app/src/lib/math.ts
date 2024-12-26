@@ -86,23 +86,15 @@ export class Random {
  */
 export class $Math {
     /**
-     * Returns a random number to the given number of significant figures
+     * Returns the number rounded to the given number of significant figures
      * @date 1/13/2024 - 11:32:15 PM
      *
      * @param {number} sigFigs
      * @param {number} num
      * @returns {number}
      */
-    static roundTo(sigFigs: number, num: number) {
-        if (num === 0) return 0;
-      
-        // Calculate the magnitude of the number
-        const d = Math.ceil(Math.log10(num < 0 ? -num : num));
-      
-        // Calculate the rounding factor (10^sigFigs-1)
-        const factor = Math.pow(10, sigFigs - d);
-      
-        // Round the number to the nearest integer, then divide by the factor
+    static roundTo(num: number, sigFigs: number) {
+        const factor = Math.pow(10, sigFigs);
         return Math.round(num * factor) / factor;
       }
 

@@ -8,16 +8,13 @@
 </script>
 
 <style>
-    .os-monitor {
-    }
-
     pre, h1, h2, h3, h4, h5, h6, p, tr, td {
         font-family: 'Roboto Mono', monospace;
         margin: 0px;
     }
     
 </style>
-<div class="card shadow p-0">
+<div class="card glow p-0">
     <div class="card-header text-center stretched">
         <h5 class="card-title dashboard-title">
             System Monitor

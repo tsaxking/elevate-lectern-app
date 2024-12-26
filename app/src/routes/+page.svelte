@@ -1,35 +1,30 @@
-<script>
-    import { Show } from "$lib/stores/show";
+<script lang="ts">
+	import { goto } from "$app/navigation";
+	import ShowCard from "$lib/components/ShowCard.svelte";
+	import { colorPicker, confirm, prompt } from "$lib/prompts.svelte";
+    import { Show } from "$lib/stores/show.svelte";
 
-    const shows = Show.getAll();
+    const shows = Show.getAll(true);
 
-    const createNew = () => {
-        const name = prompt('Enter Show Name');
+    const createNew = async () => {
+        const name = await prompt('Enter Show Name');
         if (!name) return;
         Show.new({
             name,
-            presets: []
+            presets: [],
+            color: '#000000',
         });
     };
 </script>
 
-<button type="button" class="btn btn-primary" onclick={createNew}>New</button>
 
-<div class="container">
-    {#each $shows as show}
+<div class="container mt-3">
+    <div class="row mb-3">
+        <button type="button" class="btn btn-primary glow" onclick={createNew}>New Show</button>
+    </div>
+    {#each shows as show}
         <div class="row mb-3">
-            <a href="/show/{show.id}" class="text-decoration-none">
-                <div class="card bg-secondary p-0">
-                    <div class="card-header">
-                        <h5>{show.name}</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>
-                            Presets: {show.presets.length}
-                        </p>
-                    </div>
-                </div>
-            </a>
+            <ShowCard show={show} />
         </div>
     {/each}
 </div>

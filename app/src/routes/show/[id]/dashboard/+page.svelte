@@ -17,7 +17,7 @@
         const color = Color.fromHex($show.color);
         // self.style.setProperty('--bs-border-color', color.toString('hex'), 'important');
         // self.style.setProperty('--bs-card-border-color', color.toString('hex'), 'important');
-        // self.style.setProperty('--bs-body-color-rgb', color.toString('hex'), 'important');
+        self.style.setProperty('--glow-color', color.toString('rgb'), 'important');
 
     });
 </script>
@@ -25,7 +25,7 @@
 
 <div bind:this={self}>
     <ShowBanner {show} />
-    <div class="container-fluid p-3 py-0 vh-100 w-100">
+    <div class="container-fluid p-3 height py-0 w-100 no-scroll-x">
         <div class="row h-100">
             <div class="col-lg-8 col-md-12">
                 <div class="container-fluid m-0 p-0">
@@ -36,7 +36,7 @@
                         <Sensors />
                     </div>
                     <div class="row">
-                        <CommandMonitor />
+                        <CommandMonitor {show} />
                     </div>
                 </div>
             </div>
@@ -46,3 +46,9 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* .height {
+        height: calc(100vh - 20px);
+    } */
+</style>

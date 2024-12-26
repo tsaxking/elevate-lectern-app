@@ -755,3 +755,7 @@ body::-webkit-scrollbar-thumb:hover {
     letter-spacing: 4px;
     text-align: center;
 }
+
+.glow {
+    box-shadow: 0 0 5px var(--glow-color);
+}

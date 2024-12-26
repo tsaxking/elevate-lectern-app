@@ -8,7 +8,7 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		port: 4000,
-		// host: '127.0.0.1'
+		// host: 'taylorpi.local'
 		// host: ip
 		host: 'taylorpi.local'
 	},

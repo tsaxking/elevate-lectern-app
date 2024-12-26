@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Color } from "$lib/colors/color";
 	import { colorPicker, prompt } from "$lib/prompts.svelte";
-	import type { Show } from "$lib/stores/show";
+	import type { Show } from "$lib/stores/show.svelte";
 
     interface Props {
         show: Show;
@@ -14,7 +14,9 @@
 
     const changeName = async (e: Event) => {
         e.preventDefault();
-        const name = await prompt('Enter a new name for the show');
+        const name = await prompt('Enter a new name for the show', {
+            default: show.name
+        });
         if (name) {
             show.update(s => {
                 s.name = name;
@@ -30,7 +32,9 @@
         if (!Object.is(self, e.target)) {
             return;
         }
-        const color = await colorPicker('Enter a new color for the show');
+        const color = await colorPicker('Enter a new color for the show', {
+            default: show.color
+        });
         if (color) {
             show.update(s => {
                 s.color = color;

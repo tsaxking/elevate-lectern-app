@@ -14,7 +14,6 @@ const mkDir = async () => {
     });
 }
 
-
 export const getJSON = async <T = unknown>(name: string) => {
     return attemptAsync<T>(async () => {
         const file = path.resolve(DIR, `${name}.json`);

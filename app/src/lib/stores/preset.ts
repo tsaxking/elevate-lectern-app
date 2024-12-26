@@ -1,4 +1,4 @@
-import type { Show } from "./show";
+import type { Show } from "./show.svelte";
 import type { PresetConfig, State } from "../types";
 
 
