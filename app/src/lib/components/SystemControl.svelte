@@ -163,7 +163,7 @@
     <div class="card-body p-0 system-controller h-100">
         <div class="container-fluid">
             <div class="row">
-                <div class="col-2">
+                <div class="col-3">
                     <h6 class="text-center ws-nowrap">Set Speed:</h6>
                     <small class="text-center ws-nowrap text-muted">{Math.round((motorSpeed || $system.system.motor_speed) * 100)}%</small>
                     <div class="d-flex justify-content-center">
@@ -194,7 +194,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-2">
+                <div class="col-3">
                     <h6 class="text-center ws-nowrap">Set Pos:</h6>
                     <small class="text-center ws-nowrap text-muted">{pos}in</small>
                     <div class="d-flex justify-content-center">
