@@ -1,0 +1,10 @@
+/* Bootstrap Custom Theme - Dark and Techy */
+* {
+    /* Background Colors */
+    --bs-body-bg: #121417; /* Onyx Black */
+    --bs-body-bg-rgb: var(--bs-body-bg);
+    --bs-body-color: #E4E7EB; /* Ice White */
+    --bs-body-color-rgb: var(--bs-body-bg);
+    --bs-light-bg: #2D2F36; /* Charcoal Gray */
+    --bs-dark-bg: #1B1F2F; /* Midnight Purple */
+}

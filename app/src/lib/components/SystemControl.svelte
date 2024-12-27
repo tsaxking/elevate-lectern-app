@@ -109,16 +109,48 @@
             },
             color: BootstrapColor.INFO,
             disabled: false,
+        },
+        {
+            name: 'Calibrate',
+            action: async () => {
+                if (await confirm('Run calibration? (This will lock the system until the calibration is complete)')) {
+                    send('calibrate', undefined)
+                }
+            },
+            color: BootstrapColor.WARNING,
+            disabled: !$system.connected,
+        },
+        {
+            name: 'Shutdown',
+            action: async () => {
+                if (await confirm('Shut down?')) {
+                    send('shutdown', undefined);
+                }
+            },
+            color: BootstrapColor.DANGER,
+            disabled: !$system.connected,
         }
     ]);
 
     let motorSpeed = $state(0);
-    const commit = () => {
-        // const num = M.roundTo(3, motorSpeed);
+    const commitSpeed = () => {
         send('move', motorSpeed.toFixed(3));
     };
 
-    let timeout: NodeJS.Timeout;
+    let speedTimeout: NodeJS.Timeout;
+
+    let posTimeout: NodeJS.Timeout;
+    let pos = $state(0);
+    let writingPos = $state(false);
+
+    $effect(() => {
+        if (writingPos) return;
+        pos = $system.system.sensors.position;
+    });
+
+    const commitPos = () => {
+        send('go_to', pos.toFixed(3));
+    };
 
     let modal: Modal;
     let currentPreset: PresetConfig | null = $state(null);
@@ -129,30 +161,57 @@
         <h5 class="card-title dashboard-title">System Control</h5>
     </div>
     <div class="card-body p-0 system-controller h-100">
-        <div class="container-fluid p-0">
+        <div class="container-fluid">
             <div class="row">
-                <div class="col px-3 mb-0">
-                    <h6 class="text-center">Motor Speed:</h6>
-                    <input id="motor-speed" type="range" class="form-range" min="{-1}" max="{1}" step="{0.001}" bind:value={motorSpeed} oninput={() => {
-                        clearTimeout(timeout);
-                        timeout = setTimeout(() => {
-                            commit();
-                        }, 20);
+                <div class="col-2">
+                    <h6 class="text-center ws-nowrap">Set Speed:</h6>
+                    <small class="text-center ws-nowrap text-muted">{Math.round((motorSpeed || $system.system.motor_speed) * 100)}%</small>
+                    <div class="d-flex justify-content-center">
+                    <input type="range" id="motor-speed" class="form-range vertical" min={-1} max={1} step={.001} bind:value={motorSpeed} oninput={() => {
+                        if (speedTimeout) clearTimeout(speedTimeout);
+                        speedTimeout = setTimeout(commitSpeed, 20);
                     }} onchange={() => {
                         send('stop', undefined);
                         motorSpeed = 0;
-                    }} />
-                </div>
-
-            </div>
-            <div class="row">
-                {#each buttons as button}
-                    <div class="col-12">
-                        <button type="button" class="btn w-100 my-2 btn-sm btn-{button.color}" onclick={button.action} disabled={button.disabled} oncontextmenu="{button.contextmenu}">
-                            {button.name}
-                        </button>
+                    }} 
+                        style="
+                            width: 16px;
+                            height: 400px;
+                        "
+                    >
                     </div>
-                {/each}
+                </div>
+                <div class="col-6">
+                    <div class="container-fluid p-0">
+                        <div class="row">
+                            {#each buttons as button}
+                                <div class="col-12">
+                                    <button type="button" class="btn w-100 my-2 btn-{button.color}" onclick={button.action} disabled={button.disabled} oncontextmenu="{button.contextmenu}">
+                                        {button.name}
+                                    </button>
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-2">
+                    <h6 class="text-center ws-nowrap">Set Pos:</h6>
+                    <small class="text-center ws-nowrap text-muted">{pos}in</small>
+                    <div class="d-flex justify-content-center">
+                    <input type="range" id="motor-speed" class="form-range vertical" min={$system.system.calibration.bottom || 0} max={$system.system.calibration.top || 20} step={.001} bind:value={pos} oninput={() => {
+                        writingPos = true;
+                        if (posTimeout) clearTimeout(posTimeout);
+                        posTimeout = setTimeout(commitPos, 20);
+                    }} onchange={() => {
+                        writingPos = false;
+                    }} 
+                        style="
+                            width: 16px;
+                            height: 400px;
+                        "
+                    >
+                    </div>
+                </div>
             </div>
         </div>
     </div>

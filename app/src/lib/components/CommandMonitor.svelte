@@ -20,7 +20,7 @@
     };
 
     type CommandList = {
-        command: '/move' | '/stop' | '/go_to' | '/bump' | '/preset';
+        command: '/move' | '/stop' | '/go_to' | '/bump' | '/preset' | '/shutdown';
         argType: 'number' | 'text' | '';
         argName: string;
         converter?: (arg: string) => any;
@@ -58,6 +58,11 @@
             command: '/preset',
             argType: 'text',
             argName: 'preset',
+        },
+        {
+            command: '/shutdown',
+            argType: '',
+            argName: '',
         }
     ];
         const command = await select('Select Command', commandList.map(c => c.command));
@@ -107,36 +112,34 @@
     };
 </script>
 
-<div class="card p-0 glow">
+<div class="card p-0 glow m-0">
     <div class="card-header">
-        <h5 class="card-title">Command Monitor</h5>
+        <h5 class="card-title text-center">Command Monitor</h5>
     </div>
-    <div class="card-body p">
+    <div class="card-body p" style="height: 361px; overflow-y: scroll;">
         <div class="container-fluid">
-            <div class="row">
-                <div class="col-6">
-                    <p>Most Recent Command: (click to run again)</p>
-                    {#if latest_command}
-                        <button type="button" class="btn btn-primary w-100" onclick={() => run(latest_command)}>
-                            {latest_command.command}: {latest_command.args.join(', ')}
-                        </button>
-                    {/if}
-                </div>
-                <div class="col-4">
-                    <p>Command Backlog:</p>
-                    <ul class="list-group">
-                        {#each $system.system.backlog as c}
-                            <li class="list-group-item">
-                                {c.command}: {c.args.join(', ')}
-                            </li>
-                        {/each}
-                    </ul>
-                </div>
-                <div class="col-2">
-                    <button type="button" class="btn btn-secondary w-100 h-100" onclick={custom}>
-                        Run Custom
+            <div class="row mb-1">
+                <button type="button" class="btn btn-secondary w-100 h-100" onclick={custom}>
+                    Run Custom
+                </button>
+            </div>
+            <div class="row mb-1">
+                <p>Most Recent Command: (click to run again)</p>
+                {#if latest_command}
+                    <button type="button" class="btn btn-primary w-100" onclick={() => run(latest_command)}>
+                        {latest_command.command}: {latest_command.args.join(', ')}
                     </button>
-                </div>
+                {/if}
+            </div>
+            <div class="row">
+                <p>Command Backlog:</p>
+                <ul class="list-group">
+                    {#each $system.system.backlog as c}
+                        <li class="list-group-item">
+                            {c.command}: {c.args.join(', ')}
+                        </li>
+                    {/each}
+                </ul>
             </div>
         </div>
     </div>

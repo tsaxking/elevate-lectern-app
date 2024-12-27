@@ -101,3 +101,12 @@ def do_while(condition, action):
     """
     while condition():
         action()
+
+def cm_to_in(cm: float) -> float:
+    """
+    Convert centimeters to inches.
+
+    :param cm: Length in centimeters.
+    :return: Length in inches.
+    """
+    return cm / 2.54

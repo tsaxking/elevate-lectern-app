@@ -3,7 +3,6 @@ import dgram from 'dgram';
 import { getIp } from './utils';
 import sys from 'systeminformation';
 import { $Math } from '$lib/math';
-import { nowSmall } from '$lib/clock';
 
 const socket = dgram.createSocket('udp4');
 
@@ -31,9 +30,9 @@ setInterval(async () => {
         sys.cpuTemperature(),
     ]);
 
-    os_info.cpu_usage = $Math.roundTo(2, load.currentLoad);
-    os_info.ram = $Math.roundTo(2, (ram.free / ram.total) * 100);
-    os_info.cpu_temp = $Math.roundTo(2, temp.main);
+    os_info.cpu_usage = $Math.roundTo( load.currentLoad, 2);
+    os_info.ram = $Math.roundTo( (ram.free / ram.total) * 100, 2);
+    os_info.cpu_temp = $Math.roundTo( temp.main, 2);
     os_info.updated = Date.now();
 }, 1000 * 10);
 

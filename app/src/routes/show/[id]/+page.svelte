@@ -1,44 +1,56 @@
 <script lang="ts">
-	import { system } from '$lib/stores/system.js';
+    import SystemMonitor from "$lib/components/SystemMonitor.svelte";
+	import SystemControl from '$lib/components/SystemControl.svelte';
+	import Sensors from '$lib/components/Sensors.svelte';
+    import CommandMonitor from '$lib/components/CommandMonitor.svelte';
+	import ShowBanner from "$lib/components/ShowBanner.svelte";
+	import { onMount } from "svelte";
+	import { Color } from "$lib/colors/color.js";
 
     const { data } = $props();
-    const show = data.show;
+    let show = $state(data.show);
 
-    const createNew = () => {
-        const name = prompt('Enter Preset Name');
-        if (!name) return;
-        show.addPreset({
-            name,
-            state: {
-                height: system.state.system.sensors.position
-            },
-            id: show.nextPresetId(),
-        });
-    };
+    let self: HTMLDivElement;
+
+
+    $effect(() => {
+        const color = Color.fromHex($show.color);
+        // self.style.setProperty('--bs-border-color', color.toString('hex'), 'important');
+        // self.style.setProperty('--bs-card-border-color', color.toString('hex'), 'important');
+        self.style.setProperty('--glow-color', color.toString('rgb'), 'important');
+
+    });
 </script>
 
 
-<div class="container">
-    <div class="row">
-        <h1 class="text-center">Current Show: {show.name}</h1>
-    </div>
-    <div class="row">
-        <button type="button" class="btn btn-primary" onclick={createNew}>
-            New Preset
-        </button>
-    </div>
-    {#each $show.presets as preset}
-        <div class="row mb-3">
-            <div class="card bg-secondary p-0">
-                <div class="card-header">
-                    <h5>{preset.name}</h5>
-                </div>
-                <div class="card-body">
-                    <p>
-                        {preset.state.height}
-                    </p>
+<div bind:this={self}>
+    <ShowBanner {show} />
+    <div class="container-fluid p-3 height py-0 w-100 no-scroll-x">
+        <div class="row h-100">
+            <div class="col-lg-7 col-md-12">
+                <div class="container-fluid m-0 p-0">
+                    <div class="row mb-2">
+                        <SystemMonitor />
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-6 m-0 p-1">
+                            <Sensors />
+                        </div>
+                        <div class="col-6 m-0 p-1">
+                            <CommandMonitor {show} />
+                        </div>
+                    </div>
                 </div>
             </div>
+            <div class="col-lg-5 col-md-12 h-100 px-1">
+                <SystemControl bind:show={show} />
+            </div>
         </div>
-    {/each}
+    </div>
 </div>
+
+<style>
+    /* .height {
+        height: calc(100vh - 20px);
+    } */
+</style>

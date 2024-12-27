@@ -1,6 +1,14 @@
 {
   "id": 6,
   "name": "Show 2",
-  "presets": [],
-  "color": "#ff0000"
+  "presets": [
+    {
+      "name": "Test",
+      "state": {
+        "height": 14
+      },
+      "id": 1
+    }
+  ],
+  "color": "#1e00ff"
 }

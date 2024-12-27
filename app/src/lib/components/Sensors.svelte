@@ -9,29 +9,29 @@
     const LED_SIZE = 12;
 
     // const blue = new Color(0, 200, 255).toString();
-    const green = new Color(57, 255, 20).toString();
-    const yellow = new Color(255, 255, 0).toString();
-    const red = new Color(255, 72, 82).toString();
+    // const green = new Color(57, 255, 20).toString();
+    // const yellow = new Color(255, 255, 0).toString();
+    // const red = new Color(255, 72, 82).toString();
+
+    const green = Color.fromHex('#63b57a').toString();
+    const yellow = Color.fromHex('ffbf47').toString();
+    const red = Color.fromHex('#e74c3c').toString();
 
 
 const determineColor = (number: number): string => {
     number = abs(number);
-    if (number <= 10) return red;
-    if (number < 20) return yellow;
+    if (number <= 4) return red;
+    if (number < 8) return yellow;
     return green;
 };
 
 const determineStr = (number: number) => {
     number = abs(number);
-    if (number <= 10) return 'Slowing Down';
-    if (number < 20) return 'Approaching Limit';
+    if (number <= 4) return 'Slowing Down';
+    if (number < 8) return 'Approaching Limit';
     return 'Good';
 };
 </script>
-
-<!-- <pre>
-{JSON.stringify($system, null, 4)}
-</pre> -->
 
 {#snippet numLED(num: number)}
     <Led color={determineColor(num)} brightness={1-log(abs(num / 10))} size={LED_SIZE}/>
@@ -42,7 +42,7 @@ const determineStr = (number: number) => {
 {/snippet}
 
 {#snippet potentiometer(num: number, min: number, max: number)}
-    <Range value={num} {max} {min} step={.01} disabled={true}/>
+    <Range value={num} {max} {min} step={.01} disabled={true} vertical={true} style="width: 16px; height: 225px;" />
 {/snippet}
 
 <div class="card p-0 glow">
@@ -52,7 +52,23 @@ const determineStr = (number: number) => {
     <div class="card-body sensors">
         <div class="container-fluid p-0">
             <div class="row p-0">
-                <div class="col-8 p-0">
+                <!-- <div class="col-3 p-0 h-100">
+                    <ul class="list-group h-100">
+                        <li class="list-group-item h-100 d-flex flex-column justify-content-center p-1" style="height: 329px !important;">
+                            <p class="text-center">
+                                Position
+                            </p>
+                            <p class="text-center">
+                                ({$system.system.sensors.position}in)
+                            </p>
+                            <div class="w-100 d-flex justify-content-center">
+                                {@render potentiometer($system.system.sensors.position, $system.system.calibration.bottom || 0, $system.system.calibration.top || 20)}
+                            </div>
+                        </li>
+                    </ul>
+                </div> -->
+                <!-- <div class="col-9"> -->
+                <div class="col-12">
                     <ul class="list-group">
                         <li class="list-group-item d-flex align-items-center">
                             {@render numLED($system.system.proximity_up)}
@@ -62,30 +78,6 @@ const determineStr = (number: number) => {
                             {@render numLED($system.system.proximity_down)}
                             <span class="ms-2" style="color: {determineColor($system.system.proximity_down)}">Lower Proximity: {determineStr($system.system.proximity_down)}</span>
                         </li>
-                        <li class="list-group-item d-flex align-items-center">
-                            <span class="me-2">Main Speed</span>
-                            {@render potentiometer($system.system.sensors.main_speed, 0, 1)}
-                        </li>
-                        <li class="list-group-item d-flex align-items-center">
-                            <span class="me-2">Lectern Speed</span>
-                            {@render potentiometer($system.system.sensors.secondary_speed, 0, 1)}
-                        </li>
-                        <li class="list-group-item d-flex align-items-center">
-                            <span class="me-2">Velocity</span>
-                            {@render potentiometer($system.system.velocity, -1, 1)}
-                        </li>
-                        <li class="list-group-item d-flex align-items-center">
-                            <span class="me-2">Target Speed</span>
-                            {@render potentiometer($system.system.target_speed, -1, 1)}
-                        </li>
-                        <li class="list-group-item d-flex align-items-center">
-                            <span class="me-2">Position</span>
-                            {@render potentiometer($system.system.sensors.position, 0,50)}
-                        </li>
-                    </ul>
-                </div>
-                <div class="col-4">
-                    <ul class="list-group">
                         <li class="list-group-item d-flex align-items-center">
                             {@render boolLED($system.system.sensors.max_limit)}
                             <span class="ms-2">Upper Limit</span>

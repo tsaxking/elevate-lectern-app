@@ -12,6 +12,14 @@ const target = (() => {
     return null;
 })();
 
+const clear = () => {
+    if (target) {
+        // there can be multiple modals open at once, this will remove the last one, which should be the one that was just closed since they are closed in order
+        const modal = target.lastChild;
+        if (modal) target.removeChild(modal);
+    }
+}
+
 type ButtonConfig = {
     text: string;
     color: BootstrapColor;
@@ -111,7 +119,8 @@ export const prompt = async (message: string, config?: PromptConfig) => {
 
         modal.show();
 
-        modal.on('hide', () => res(null));
+        modal.once('hide', () => res(null));
+        modal.once('hide', clear);
     });
 };
 
@@ -171,6 +180,7 @@ export const select = async <T>(message: string, options: T[], config?: SelectCo
         });
 
         modal.show();
+        modal.once('hide', clear);
     });
 }
 
@@ -218,7 +228,8 @@ export const choose = async <A, B>(message: string, A: A, B: B, config?: ChooseC
         });
         modal.show();
 
-        modal.on('hide', () => res(false));
+        modal.once('hide', () => res(false));
+        modal.once('hide', clear);
     });
 };
 
@@ -259,7 +270,8 @@ export const confirm = async (message: string, config?: ConfirmConfig) => {
         });
         modal.show();
 
-        modal.on('hide', () => res(false));
+        modal.once('hide', () => res(false));
+        modal.once('hide', clear);
     });
 };
 
@@ -288,7 +300,8 @@ export const alert = async (message: string, config?: AlertConfig) => {
         });
         modal.show();
 
-        modal.on('hide', () => res());
+        modal.once('hide', () => res());
+        modal.once('hide', clear);
     });
 };
 
@@ -346,5 +359,7 @@ export const colorPicker = async (message: string, config?: ColorPickerConfig) =
         });
 
         modal.show();
+
+        modal.once('hide', clear);
     });
 }

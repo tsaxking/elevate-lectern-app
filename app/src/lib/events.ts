@@ -17,7 +17,9 @@ export type OscCommands = {
     test: [1, 2, 3];
     move: number | string;
     stop: void;
-    go_to: number;
-    bump: number;
+    go_to: number | string;
+    bump: number | string;
     preset: string;
+    shutdown: void;
+    calibrate: void;
 };

@@ -37,6 +37,7 @@ class UltrasonicConfig(TypedDict):
     echo: int
     threading: bool
     tick_speed: float
+    offset: float
 
 class Ultrasonic:
     def __init__(self, config: UltrasonicConfig):
@@ -44,6 +45,7 @@ class Ultrasonic:
         self.echo = config["echo"]
         self.tick_speed = config["tick_speed"]
         self.running = True
+        self.offset = config['offset']
         self.points = [] # limit the number of points to 5, and use moving average
         if not GPIO.getmode():
             GPIO.setmode(GPIO.BCM)
@@ -95,7 +97,7 @@ class Ultrasonic:
             if not stop:
                 duration = end_time - start_time
                 distance = (duration * 34300) / 2
-                self.points.append(distance)
+                self.points.append(utils.cm_to_in(distance))
                 if len(self.points) > length:
                     self.points.pop(0)
             time.sleep(self.tick_speed / 1000)
@@ -105,7 +107,7 @@ class Ultrasonic:
         # data = utils.remove_outliers_iqr(self.points)
         # data = utils.remove_outliers_trim(self.points, 10)
         avg = np.average(data)
-        return avg if not np.isnan(avg) else 0
+        return avg if not np.isnan(avg) else 0 + self.offset
         # threshold = 20 # percent
         # data = np.array(self.points)
         # data_min = np.min(data)

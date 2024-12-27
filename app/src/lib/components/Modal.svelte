@@ -25,6 +25,7 @@
     };
 
     export const on = em.on.bind(em);
+    export const once = em.once.bind(em);
 
     export const show = async () => {
         const modal = await getModal();

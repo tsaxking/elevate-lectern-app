@@ -1,17 +1,29 @@
 import { handler } from './build/handler.js';
 import express from 'express';
+import http from 'http';
 
-const app = express();
 
-// add a route that lives separately from the SvelteKit app
-app.get('/healthcheck', (req, res) => {
+const server = http.createServer(handler);
 
-	res.end('ok');
+const PORT = 80;
+const HOSTNAME = 'taylorpi.local';
+
+
+server.listen(PORT, HOSTNAME, () => {
+	console.log(`Server running at http://${HOSTNAME}:${PORT}`);
 });
 
-// let SvelteKit handle everything else, including serving prerendered pages and static assets
-app.use(handler);
+// const app = express();
 
-app.listen(3000, () => {
-	console.log('listening on port 3000');
-});
+// // add a route that lives separately from the SvelteKit app
+// app.get('/healthcheck', (req, res) => {
+
+// 	res.end('ok');
+// });
+
+// // let SvelteKit handle everything else, including serving prerendered pages and static assets
+// app.use(handler);
+
+// app.listen(80, () => {
+// 	console.log('listening on taylorpi.local');
+// });

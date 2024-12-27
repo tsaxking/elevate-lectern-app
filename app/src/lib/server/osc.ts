@@ -5,8 +5,8 @@ import net from 'net';
 import { SimpleEventEmitter } from '$lib/event-emitter';
 
 const udpPort = new osc.UDPPort({
-    localAddress: 'localhost',
-    localPort: 12321,
+    // localAddress: 'taylorpi.local',
+    // localPort: 12321,
     remoteAddress: 'taylorpi.local',
     remotePort: 12321
 });

@@ -34,7 +34,7 @@ export const listen = <K extends keyof Events>(event: K, cb: (data: Events[K]) =
 
 export const send = <K extends keyof Events>(event: K, data: Events[K]): Promise<Result<unknown>> => {
     return attemptAsync(async () => {
-        return fetch(`http://${__VITE_IP__}:4000/sse`, {
+        return fetch(`http://${__VITE_HOST__}/sse`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

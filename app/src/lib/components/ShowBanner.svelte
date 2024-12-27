@@ -53,12 +53,14 @@
         const b = c.detectContrast(Color.fromName('black'));
 
         textColor = w > b ? 'white' : 'black';
+
+        console.log('textColor', textColor);
     });
 </script>
 
 
 <div class="card p-0 mb-1 w-100">
-    <div bind:this={self} class="card-body d-flex justify-content-center p-1" oncontextmenu="{changeColor}" style="background-color: {$show.color}; color: {textColor}">
-        <h5 oncontextmenu="{changeName}">{$show.name}</h5>
+    <div bind:this={self} class="card-body d-flex justify-content-center p-1" oncontextmenu="{changeColor}" style="background-color: {$show.color};">
+        <h5 oncontextmenu="{changeName}" style="color: {textColor} !important;">{$show.name}</h5>
     </div>
 </div>

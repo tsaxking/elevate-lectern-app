@@ -29,8 +29,6 @@ from preset import Preset, Show
 import select
 from utils import round
 import math
-from pyee import EventEmitter
-
 
 def clear():
     print(chr(27) + "[2J")
@@ -40,9 +38,10 @@ MAX_SPEED = .87
 ACCEL_RATE = 0.02 # Acceleration rate
 SPEED_TOLERANCE = 0.03
 POS_TOLERANCE = 1
-SLOW_DOWN_DISTANCE = 20
-LIMIT_SLOW_DOWN_DISTANCE = 10
+SLOW_DOWN_DISTANCE = 8
+LIMIT_SLOW_DOWN_DISTANCE = 4
 LIMIT_SLOW_DOWN_SPEED = 0.35
+POSITION_OFFSET = 0
 
 UDP_TICK_SPEED = TICK_SPEED * 10
 UDP_PORT = 41234
@@ -122,7 +121,8 @@ class Sensors:
             echo=config['echo_pin'],
             trig=config['trigger_pin'],
             threading=True,
-            tick_speed=config['tick_speed']
+            tick_speed=config['tick_speed'],
+            offset=POSITION_OFFSET
         ))
         self.max_limit = Switch(config['max_limit_pin'])
         self.min_limit = Switch(config['min_limit_pin'])
@@ -223,6 +223,7 @@ class System:
         self.on = True
         self.calibration_state = CalibrationState.NOT_CALIBRATED
         self.calibration = Calibration()
+        # self.prev_calibration = None # used if there is a stop command while the system is calibrating, it will go back to this calibration
         self.current_command = None
         # self.max = 1
         # self.min = 0
@@ -261,7 +262,7 @@ class System:
             show_id = int(p[0])
             preset_id = int(p[1])
             def load_json_async():
-                with open(f'../json/show-{show_id}.json', 'r') as file:
+                with open(f'/home/taylorpi/Documents/shows/show-{show_id}.json', 'r') as file:
                     data: Show = json.load(file)
                     for p in data['presets']:
                         if p['id'] == preset_id:
@@ -314,16 +315,24 @@ class System:
                         print('TEST SUCCESSFUL')
                         break
                     if command['command'] == '/go_to':
-                        self.go_to(command['args'][0])
+                        self.go_to(float(command['args'][0]))
                         break
                     if command['command'] == '/bump':
-                        self.set_speed(command['args'][0])
+                        self.set_speed(float(command['args'][0]))
                         sleep(1)
                         self.stop()
                         break
                     if command['command'] == '/preset':
                         self.command_ready = False
-                        self.go_to_preset(command['args'][0])
+                        self.go_to_preset(str(command['args'][0]))
+                        break
+                    if command['command'] == '/shutdown':
+                        self.command_ready = False
+                        self.shut_down()
+                        break
+                    if command['command'] == '/calibrate':
+                        self.command_ready = False
+                        self.start_up()
                         break
                 sleep(TICK_SPEED / 1000)
 
@@ -456,7 +465,7 @@ class System:
 
 
 
-    def calibrate(self, emitter: EventEmitter):
+    def calibrate(self):
         print('Starting calibration')
         self.global_state = GlobalState.CALIBRATING
         max_speed = .5
@@ -514,33 +523,30 @@ class System:
         print('Calibration complete')
         print(f'Results: {self.calibration.__dict__}')
         self.global_state = GlobalState.RUNNING
-        emitter.emit('complete')
 
     def start_up(self):
-        emitter = EventEmitter()
         self.global_state = GlobalState.STARTUP
-        thread = threading.Thread(target=self.calibrate, args=(emitter,))
+        thread = threading.Thread(target=self.calibrate, args=())
         thread.daemon = True
         thread.start()
-        return emitter
 
     def shut_down(self):
-        emitter = EventEmitter()
         def run_shutdown():
-            self.set_speed(-1)
+            self.set_speed(-0.5)
             while self.on and not self.sensors.min_limit.read():
                 sleep(TICK_SPEED / 1000)
-            self.stop()
+            self.stop() # Probably isn't necessary because it should be at the limit
+            self.on = False
             self.cleanup()
-            emitter.emit('shutdown')
-            
+            # TODO: sudo shutdown 0
+            print('Sudo shutdown 0')
+            # subprocess.run(['sudo', 'shutdown', '0'])
+            exit()
 
         self.global_state = GlobalState.SHUTDOWN
         thread = threading.Thread(target=run_shutdown)
         thread.daemon = True
         thread.start()
-
-        return emitter
 
     def event_loop(self):
         self.start_up()
@@ -676,6 +682,9 @@ class System:
                 self.velocity = sensors['position'] - prev_pos
 
             prev_pos = sensors['position']
+
+            if self.global_state == SYSTEM_STATE.CALIBRATING:
+                self.command_ready = False
 
             sleep(TICK_SPEED / 1000)
 

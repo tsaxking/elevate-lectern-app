@@ -32,7 +32,7 @@
         }
     };
     const open = (show: Show) => {
-        goto(`/show/${show.id}/dashboard`);
+        goto(`/show/${show.id}`);
     }
 </script>
 

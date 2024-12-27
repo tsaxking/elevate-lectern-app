@@ -5,10 +5,11 @@
         max: number;
         step: number;
         disabled: boolean;
+        style?: string;
+        vertical?: boolean;
     }
 
-    const { value, min = 0, max = 100, step = 1, disabled }: Props = $props();
+    const { value, min = 0, max = 100, step = 1, disabled, style = '', vertical = false }: Props = $props();
 </script>
 
-<input type="range" {value} {min} {max} {step} {disabled} class="form-range" />
-
+<input type="range" {value} {min} {max} {step} {disabled} class="form-range" class:vertical={vertical} style={style} />

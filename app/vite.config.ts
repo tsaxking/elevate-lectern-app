@@ -1,8 +1,5 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { getIp } from './src/lib/server/utils';
-
-const ip = getIp().unwrap();
 
 export default defineConfig({
 	plugins: [sveltekit()],
@@ -13,6 +10,6 @@ export default defineConfig({
 		host: 'taylorpi.local'
 	},
 	define: {
-		__VITE_IP__: JSON.stringify('taylorpi.local')
+		__VITE_HOST__: JSON.stringify(`taylorpi.local`)
 	}
 });

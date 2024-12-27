@@ -3,7 +3,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 
-const DIR = path.resolve(process.cwd(), '../json');
+// const DIR = path.resolve(process.cwd(), '../json');
+const DIR = '/home/taylorpi/Documents/shows';
 
 const mkDir = async () => {
     return attemptAsync(async () => {
@@ -49,11 +50,11 @@ export const getIp = () => {
         const interfaces = os.networkInterfaces();
         const eth0 = interfaces.eth0 || interfaces.en0;
 
-        if (!eth0) return 'localhost';
+        if (!eth0) return 'taylorpi.local';
 
         const ipv4 = eth0.find(i => i.family === 'IPv4');
 
-        if (!ipv4) return 'localhost';
+        if (!ipv4) return 'taylorpi.local';
 
         return ipv4.address;
     });

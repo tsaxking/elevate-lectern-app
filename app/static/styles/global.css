@@ -759,3 +759,12 @@ body::-webkit-scrollbar-thumb:hover {
 .glow {
     box-shadow: 0 0 5px var(--glow-color);
 }
+
+
+input[type=range].vertical {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    appearance: slider-vertical;
+    /* width: 16px; */
+    vertical-align: bottom;
+}
