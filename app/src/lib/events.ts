@@ -22,4 +22,5 @@ export type OscCommands = {
     preset: string;
     shutdown: void;
     calibrate: void;
+    go_to_in: [number, number];
 };

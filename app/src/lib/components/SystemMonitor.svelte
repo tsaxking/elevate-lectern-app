@@ -58,6 +58,8 @@
                                     <div class="card-body p-1 no-scroll-x ">
                                         <h6 class="text-center no-scroll-x ws-nowrap">State</h6>
                                         {#if $system.connected}
+                                        <!-- {#if $system.system.state === 'FAIL'}
+                                        {/if} -->
                                             {#if $system.system.global_state == 'RUNNING' }
                                                 <p class="text-primary text-center no-scroll-x ws-nowrap">{fromSnakeCase($system.system.state.toLowerCase())}</p>
                                             {:else}

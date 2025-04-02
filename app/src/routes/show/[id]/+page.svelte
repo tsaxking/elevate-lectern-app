@@ -18,7 +18,6 @@
         // self.style.setProperty('--bs-border-color', color.toString('hex'), 'important');
         // self.style.setProperty('--bs-card-border-color', color.toString('hex'), 'important');
         self.style.setProperty('--glow-color', color.toString('rgb'), 'important');
-
     });
 </script>
 

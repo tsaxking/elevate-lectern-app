@@ -62,7 +62,15 @@
             },
             color: BootstrapColor.PRIMARY,
             disabled: !$system.connected,
-        }, 
+        },
+        {
+            name: 'Go To',
+            action: async () => {
+                send('go_to_in', [1, 2]);
+            },
+            color: BootstrapColor.INFO,
+            disabled: !$system.connected,
+        },
         ...$show.presets.map(p => ({
             name: p.name,
             action: async () => {
@@ -102,7 +110,7 @@
                     render: s => s.name,
                 });
                 if (!selected) return;
-                goto(`/show/${selected.id}/dashboard`, {
+                goto(`/show/${selected.id}`, {
                     'replaceState': true,
                 });
                 show = selected;

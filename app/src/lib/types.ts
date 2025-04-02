@@ -15,7 +15,7 @@ export type State = {
     height: number;
 }
 
-type States = 'STAND_BY' | 'MOVING' | 'ACCELERATING' | 'LOCK' | 'UNKNOWN';
+type States = 'STAND_BY' | 'MOVING' | 'ACCELERATING' | 'LOCK' | 'UNKNOWN' | 'FAIL';
 
 type MotorState = 'STAND_BY' | 'RUNNING' | 'STOPPING' | 'STOPPED' | 'CALIBRATING' | 'TESTING' | 'UNKNOWN';
 

@@ -29,6 +29,8 @@ from preset import Preset, Show
 import select
 from utils import round
 import math
+# import keyboard
+import time
 
 def clear():
     print(chr(27) + "[2J")
@@ -87,6 +89,7 @@ class SYSTEM_STATE(Enum):
     ACCELERATING = auto()
     CALIBRATING = auto()
     LOCK = auto()
+    FAIL = auto()
 
     def to_dict(self):
         return self.name
@@ -191,6 +194,7 @@ class Calibration:
         self.top = 0
         self.bottom = 0
         self.velocity = 0
+        self.average_velocity = 0
 
 
 
@@ -211,6 +215,7 @@ class System:
         self.Q = Queue()
         self.target_pos = -1
         self.start_pos = -1
+        self.target_pos_with_time = -1
         self.velocity = 0
         self.prev_pos = -1
         self.osc = OSC_Server(OSC_Config(
@@ -250,9 +255,28 @@ class System:
         GPIO.cleanup()
 
     def go_to(self, pos: float):
+        # If not calibrated, return
+        if self.calibration_state != CalibrationState.DONE:
+            return
         self.target_pos = pos
 
+    def go_to_in(self, pos: float, time: float):
+        # If not calibrated, return
+        if self.calibration_state != CalibrationState.DONE:
+            return
+        # Estimate velocity given current position, and target position
+        distance = pos - self.sensors.read()['position']
+        velocity = distance / time
+        # min max to -1 +1
+        velocity = max(-1, min(1, velocity))
+        self.target_pos_with_time = pos
+        self.set_speed(velocity)
+        
+
     def go_to_preset(self, preset: str):
+        # If not calibrated, return
+        if self.calibration_state != CalibrationState.DONE:
+            return
         # Ensure preset looks like <number>.<number>
         p = preset.split('.')
 
@@ -332,7 +356,11 @@ class System:
                         break
                     if command['command'] == '/calibrate':
                         self.command_ready = False
-                        self.start_up()
+                        self.run_calibration()
+                        break
+                    if command['command'] == '/go_to_in':
+                        self.command_ready = False
+                        self.go_to_in(float(command['args'][0]), float(command['args'][1]))
                         break
                 sleep(TICK_SPEED / 1000)
 
@@ -404,7 +432,7 @@ class System:
                     current_command = self.current_command,
                     target_pos=round(self.target_pos, SIG_FIGS),
                     start_pos=round(self.start_pos, SIG_FIGS),
-                    velocity=round(self.velocity, SIG_FIGS),
+                    velocity=round(self.get_velocity(), SIG_FIGS),
                     motor_state=self.motor.state.to_dict(),
                     global_state=self.global_state.to_dict(),
                     proximity_up=round(self.calibration.top - S['position'], SIG_FIGS), #if self.calibration_state == CalibrationState.DONE and abs(self.calibration.top - S['position']) <= LIMIT_SLOW_DOWN_DISTANCE else 9999,
@@ -463,7 +491,26 @@ class System:
             self.osc_led.brightness = Brightness.OFF
             self.osc_led.flashing_speed = FlashingSpeed.NONE
 
+    def get_velocity(self): # in/s
+        if self.calibration.average_velocity == 0:
+            return 0
+        vel = self.calibration.velocity / self.calibration.average_velocity * self.velocity
+        if vel == 0:
+            return 0
+        return round(vel, SIG_FIGS)
 
+    def expected_velocity(self): # in/s
+        vel = self.motor.speed * self.calibration.velocity / MAX_SPEED
+        if vel == 0:
+            return 0.0
+        return round(vel, SIG_FIGS)
+
+    def vel_delta(self):
+        # TODO: This will be used to assess a fail state
+        expect = self.expected_velocity()
+        if expect == 0:
+            return 1
+        return self.get_velocity() / expect 
 
     def calibrate(self):
         print('Starting calibration')
@@ -495,6 +542,7 @@ class System:
 
         # This next step takes the longest time, so calibrate velocity as well
         self.calibration_state = CalibrationState.MIN_FAST
+        start_time = time.time() * 1000
         self.set_speed(-max_speed)
         min_height = 0
         points = []
@@ -505,8 +553,12 @@ class System:
             points.append(self.velocity)
             sleep(TICK_SPEED / 1000)
         num_points = len(points)
+
+        distance = max_height - min_height
+        self.calibration.velocity = round(((distance / abs(time.time() * 1000 - start_time)) / max_speed) * 1000, SIG_FIGS) # in/s
         if num_points > 0:
-            self.calibration.velocity = round(sum(points) / len(points), SIG_FIGS) * (1 / max_speed)
+            self.calibration.average_velocity = -1 * round(sum(points) / len(points), SIG_FIGS) * (1 / max_speed)
+        
         self.stop()
         self.calibration_state = CalibrationState.MIN_SLOW
         self.set_speed(max_speed)
@@ -524,7 +576,7 @@ class System:
         print(f'Results: {self.calibration.__dict__}')
         self.global_state = GlobalState.RUNNING
 
-    def start_up(self):
+    def run_calibration(self):
         self.global_state = GlobalState.STARTUP
         thread = threading.Thread(target=self.calibrate, args=())
         thread.daemon = True
@@ -548,8 +600,21 @@ class System:
         thread.daemon = True
         thread.start()
 
+    def kill(self):
+        print('Received kill signal')
+        self.set_speed(0)
+        self.on = False
+        self.cleanup()
+        exit()
+
+    def fail_state(self):
+        self.state = SYSTEM_STATE.FAIL
+        self.motor.stop()
+        self.gpio_moving = False
+        self.command_ready = False
+
     def event_loop(self):
-        self.start_up()
+        # self.run_calibration()
         self.gpio_moving = False
         locked = False
         # start_server(self.Q, "taylorpi.local", OSC_PORT)
@@ -558,6 +623,11 @@ class System:
         self.command_handler()
         prev_pos = None
         while self.on:
+            # print(f'Velocity delta: {self.vel_delta()}')
+            # If spacebar is pressed, stop the system
+            # if keyboard.is_pressed('space'):
+            #     self.kill()
+            #     return
             sensors = self.sensors.read()
             # print(f'GPIOMOVING: {self.gpio_moving}')
             # print(f'LOCKED: {locked}')
@@ -617,6 +687,26 @@ class System:
                 self.motor.set_speed(0)
                 self.state = SYSTEM_STATE.STAND_BY
                 self.command_ready = True
+
+            if self.target_pos_with_time != -1:
+                current_pos = sensors['position']
+                if self.start_pos == -1:
+                    self.start_pos = current_pos
+
+                distance_to_target = self.target_pos_with_time - current_pos
+                reached = abs(distance_to_target) < POS_TOLERANCE
+                if reached:
+                    self.stop()
+                    self.target_pos_with_time = -1
+                    self.start_pos = -1
+                    distance_to_target = 0
+                    self.command_ready = True
+
+                slow_down = abs(distance_to_target) - SLOW_DOWN_DISTANCE if abs(distance_to_target) < SLOW_DOWN_DISTANCE else 0
+                if distance_to_target > 0 and not reached:
+                    self.set_speed(1 + slow_down / 50)
+                elif distance_to_target < 0 and not reached:
+                    self.set_speed(-1 - slow_down / 50)
 
             if self.target_pos != -1:
                 current_pos = sensors['position']
