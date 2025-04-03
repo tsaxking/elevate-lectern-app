@@ -45,11 +45,13 @@ LIMIT_SLOW_DOWN_DISTANCE = 4
 LIMIT_SLOW_DOWN_SPEED = 0.35
 POSITION_OFFSET = 0
 FAIL_STATE_TOLERANCE = 3 # in/s
+FIXED_SPEED = 0.3
 
 UDP_TICK_SPEED = TICK_SPEED * 10
 UDP_PORT = 41234
 E_STOP_PORT = 11111
 OSC_PORT = 12321
+TCP_EMIT_PORT = 16759
 SIG_FIGS = 2
 
 
@@ -134,8 +136,8 @@ class Sensors:
         self.main_down = Switch(config['main_down_pin'])
         self.secondary_up = Switch(config['secondary_up_pin'])
         self.secondary_down = Switch(config['secondary_down_pin'])
-        self.main_speed = Potentiometer(config['main_speed_channel'])
-        self.secondary_speed = Potentiometer(config['secondary_speed_channel'])
+        # self.main_speed = Potentiometer(config['main_speed_channel'])
+        # self.secondary_speed = Potentiometer(config['secondary_speed_channel'])
 
 
     def read(self):
@@ -148,8 +150,8 @@ class Sensors:
             main_down=self.main_down.read(),
             secondary_up=self.secondary_up.read(),
             secondary_down=self.secondary_down.read(),
-            main_speed=round(self.main_speed.read(), SIG_FIGS),
-            secondary_speed=round(self.secondary_speed.read(), SIG_FIGS)
+            # main_speed=round(self.main_speed.read(), SIG_FIGS),
+            # secondary_speed=round(self.secondary_speed.read(), SIG_FIGS)
         )
 
     def cleanup(self):
@@ -223,7 +225,7 @@ class System:
             ip="taylorpi.local",
             port=OSC_PORT,
             queue=self.Q,
-            threading=True
+            threading=True,
         ))
         self.global_state = GlobalState.STARTUP
         self.on = True
@@ -237,6 +239,8 @@ class System:
         self.status_led = LED(config['status_led_pin'], config['tick_speed'], True)
         self.osc_led = LED(config['osc_led_pin'], config['tick_speed'], True)
         self.stop_timer = 0
+        # List of all TCP ip connections (strings)
+        self.connections = []
 
     def set_speed(self, speed: float):
         # self.motor.set_speed(speed * MAX_SPEED)
@@ -310,7 +314,7 @@ class System:
         print(f'Current Speed: {self.motor.speed}')
         print(f'Main Up: {sensors["main_up"]}')
         print(f'Main Down: {sensors["main_down"]}')
-        print(f'Main Speed: {sensors["main_speed"]}')
+        # print(f'Main Speed: {sensors["main_speed"]}')
         print(f'Max Limit: {sensors["max_limit"]}')
         print(f'Ready: {self.command_ready}')
 
@@ -398,6 +402,7 @@ class System:
                 while self.on:
                     conn, addr = server.accept()
                     print(f"Connection from {addr}")
+                    self.connections.append(addr[0])
                     conn.setblocking(0)
 
                     while self.on:
@@ -425,6 +430,19 @@ class System:
         e_stop_server()
 
     def emit_state(self):
+        def send_state(state, value):
+            for connection in self.connections:
+                try:
+                    self.socket.sendto(
+                        f'CUSTOM-VARIABLE lectern_{state} SET-VALUE {value}'.encode('utf-8'),
+                        (connection, 16759)
+                    )
+                except Exception as e:
+                    print(f"Error sending state: {e}")
+                    self.connections.remove(connection)
+                    connection.close()
+                    print("Connection closed")
+                    break
         def run():
             # calibration_sent = False
             while self.on:
@@ -453,6 +471,13 @@ class System:
                     json.dumps(state).encode('utf-8'),
                     ('taylorpi.local', UDP_PORT)
                 )
+                send_state('status', self.global_state.to_dict())
+                send_state('state', self.state.to_dict())
+                send_state('target', round(self.target_pos, SIG_FIGS))
+                send_state('position', round(S['position'], SIG_FIGS))
+                send_state('ready', self.command_ready)
+                send_state('calibrated', self.calibration_state == CalibrationState.DONE)
+                send_state('fail', self.is_fail_state())
                 # if not calibration_sent and self.calibration_state == CalibrationState.DONE:
                 #     self.socket.sendto(
                 #         json.dumps(self.calibration.__dict__).encode('utf-8'),
@@ -676,7 +701,7 @@ class System:
 
                 # GPIO Target Speeds
                 if self.gpio_target_motor_speed and self.gpio_moving and not locked:
-                    self.set_speed(self.gpio_target_motor_speed * sensors['main_speed'])
+                    self.set_speed(self.gpio_target_motor_speed * FIXED_SPEED)
                     self.command_ready = False
 
             # if not within tolerance, accelerate
