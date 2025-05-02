@@ -1,3 +1,3 @@
 export const globals = {
-    ip: 'taylorpi.local',
+    ip: 'localhost',
 }

@@ -20,15 +20,15 @@
 
 const determineColor = (number: number): string => {
     number = abs(number);
-    if (number <= 4) return red;
-    if (number < 8) return yellow;
+    if (number <= 2) return red;
+    if (number < 4) return yellow;
     return green;
 };
 
 const determineStr = (number: number) => {
     number = abs(number);
-    if (number <= 4) return 'Slowing Down';
-    if (number < 8) return 'Approaching Limit';
+    if (number <= 2) return 'Slowing Down';
+    if (number < 4) return 'Approaching Limit';
     return 'Good';
 };
 </script>

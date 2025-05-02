@@ -5,9 +5,9 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		port: 4000,
-		// host: 'taylorpi.local'
+		// host: 'localhost'
 		// host: ip
-		host: 'taylorpi.local'
+		host: 'localhost'
 	},
 	define: {
 		__VITE_HOST__: JSON.stringify(`taylorpi.local`)

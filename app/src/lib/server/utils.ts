@@ -50,11 +50,11 @@ export const getIp = () => {
         const interfaces = os.networkInterfaces();
         const eth0 = interfaces.eth0 || interfaces.en0;
 
-        if (!eth0) return 'taylorpi.local';
+        if (!eth0) return 'localhost';
 
         const ipv4 = eth0.find(i => i.family === 'IPv4');
 
-        if (!ipv4) return 'taylorpi.local';
+        if (!ipv4) return 'localhost';
 
         return ipv4.address;
     });

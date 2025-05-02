@@ -204,7 +204,15 @@ class Motor:
 #     if len(sys.argv) > 1 and sys.argv[1] == 'test':
 #         pin = sys.argv[2] if len(sys.argv) > 2 else 18
 #         # GPIO.setmode(GPIO.BCM)
-#         motor = Motor(pin)
+#         motor = Motor(MotorConfig(
+#             pin=18,
+#             max=2000,
+#             min=1000,
+#             zero=1500,
+#             invert=False,
+#             tick_speed=15,
+#             acceleration=0.02
+#         ))
 #         motor.test(2)
 #         motor.cleanup()
 #         exit()

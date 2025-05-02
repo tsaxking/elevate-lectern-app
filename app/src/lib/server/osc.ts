@@ -5,9 +5,9 @@ import net from 'net';
 import { SimpleEventEmitter } from '$lib/event-emitter';
 
 const udpPort = new osc.UDPPort({
-    // localAddress: 'taylorpi.local',
+    // localAddress: 'localhost',
     // localPort: 12321,
-    remoteAddress: 'taylorpi.local',
+    remoteAddress: '127.0.0.1',
     remotePort: 12321
 });
 
@@ -27,7 +27,7 @@ let interval: NodeJS.Timeout;
 
 const connect = () => {
     if (connected) return;
-    tcp.connect(11111, 'taylorpi.local');
+    tcp.connect(11111, 'localhost');
 };
 
 tcp.on('connect', () => {

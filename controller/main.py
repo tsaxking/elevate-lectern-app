@@ -11,7 +11,7 @@ TICK_SPEED = 15
 def main():
     GPIO.setmode(GPIO.BCM)
     motor = Motor(MotorConfig(
-        pin=18,
+        pin=17,
         max=2000,
         min=1000,
         zero=1500,
@@ -23,19 +23,19 @@ def main():
         position_pin=0,
         tick_speed=TICK_SPEED,
         max_limit_pin=26,
-        min_limit_pin=26,
-        power_pin=3,
+        min_limit_pin=19,
+        power_pin=18,
         main_up_pin=5,
         main_down_pin=6,
         log_state=False,
-        secondary_up_pin=7,
-        secondary_down_pin=8,
+        secondary_up_pin=24,
+        secondary_down_pin=23,
         # main_speed_channel=0,
         # secondary_speed_channel=1,
         status_led_pin=16,
         osc_led_pin=12,
-        trigger_pin=20,
-        echo_pin=21
+        trigger_pin=21,
+        echo_pin=20
     ))
     def on_exit():
         motor.disable()

@@ -31,21 +31,22 @@ from utils import round
 import math
 # import keyboard
 import time
+import subprocess
 
 def clear():
     print(chr(27) + "[2J")
 
 TICK_SPEED = 15
-MAX_SPEED = .87
+MAX_SPEED = .6
 ACCEL_RATE = 0.02 # Acceleration rate
 SPEED_TOLERANCE = 0.03
 POS_TOLERANCE = 1
-SLOW_DOWN_DISTANCE = 8
-LIMIT_SLOW_DOWN_DISTANCE = 4
+SLOW_DOWN_DISTANCE = 2
+LIMIT_SLOW_DOWN_DISTANCE = 2
 LIMIT_SLOW_DOWN_SPEED = 0.35
 POSITION_OFFSET = 0
 FAIL_STATE_TOLERANCE = 3 # in/s
-FIXED_SPEED = 0.3
+FIXED_SPEED = .75
 
 UDP_TICK_SPEED = TICK_SPEED * 10
 UDP_PORT = 41234
@@ -126,16 +127,16 @@ class Sensors:
             echo=config['echo_pin'],
             trig=config['trigger_pin'],
             threading=True,
-            tick_speed=config['tick_speed'],
+            tick_speed=100,
             offset=POSITION_OFFSET
         ))
-        self.max_limit = Switch(config['max_limit_pin'])
-        self.min_limit = Switch(config['min_limit_pin'])
-        self.power = Switch(config['power_pin'])
-        self.main_up = Switch(config['main_up_pin'])
-        self.main_down = Switch(config['main_down_pin'])
-        self.secondary_up = Switch(config['secondary_up_pin'])
-        self.secondary_down = Switch(config['secondary_down_pin'])
+        self.max_limit = Switch(config['max_limit_pin'], False)
+        self.min_limit = Switch(config['min_limit_pin'], False)
+        self.power = Switch(config['power_pin'], False)
+        self.main_up = Switch(config['main_up_pin'], False)
+        self.main_down = Switch(config['main_down_pin'], False)
+        self.secondary_up = Switch(config['secondary_up_pin'], False)
+        self.secondary_down = Switch(config['secondary_down_pin'], False)
         # self.main_speed = Potentiometer(config['main_speed_channel'])
         # self.secondary_speed = Potentiometer(config['secondary_speed_channel'])
 
@@ -171,7 +172,7 @@ class Sensors:
         # print(f'Velocity: -------- {state["velocity"]}')
         # print(f'Min Limit: ------- {state["min_limit"]}')
         print(f'Max Limit: ------- {state["max_limit"]}')
-        # print(f'Power: ----------- {state["power"]}')
+        print(f'Power: ----------- {state["power"]}')
         print(f'Main Up: --------- {state["main_up"]}')
         print(f'Main Down: ------- {state["main_down"]}')
         # print(f'Secondary Up: ---- {state["secondary_up"]}')
@@ -222,7 +223,7 @@ class System:
         self.velocity = 0
         self.prev_pos = -1
         self.osc = OSC_Server(OSC_Config(
-            ip="taylorpi.local",
+            ip="localhost",
             port=OSC_PORT,
             queue=self.Q,
             threading=True,
@@ -314,7 +315,6 @@ class System:
         print(f'Current Speed: {self.motor.speed}')
         print(f'Main Up: {sensors["main_up"]}')
         print(f'Main Down: {sensors["main_down"]}')
-        # print(f'Main Speed: {sensors["main_speed"]}')
         print(f'Max Limit: {sensors["max_limit"]}')
         print(f'Ready: {self.command_ready}')
 
@@ -394,9 +394,9 @@ class System:
         def e_stop_server():
             server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Allow reuse of address
-            server.bind(('taylorpi.local', E_STOP_PORT))
+            server.bind(('localhost', E_STOP_PORT))
             server.listen(1)
-            print(f"Server started on {'taylorpi.local'}:{E_STOP_PORT}")
+            print(f"Server started on {'localhost'}:{E_STOP_PORT}")
 
             def start_handler():
                 while self.on:
@@ -469,7 +469,7 @@ class System:
                 )
                 self.socket.sendto(
                     json.dumps(state).encode('utf-8'),
-                    ('taylorpi.local', UDP_PORT)
+                    ('localhost', UDP_PORT)
                 )
                 send_state('status', self.global_state.to_dict())
                 send_state('state', self.state.to_dict())
@@ -481,7 +481,7 @@ class System:
                 # if not calibration_sent and self.calibration_state == CalibrationState.DONE:
                 #     self.socket.sendto(
                 #         json.dumps(self.calibration.__dict__).encode('utf-8'),
-                #         ('taylorpi.local', UDP_PORT)
+                #         ('localhost', UDP_PORT)
                 #     )
                 #     calibration_sent = True
                 sleep(UDP_TICK_SPEED / 1000)
@@ -549,8 +549,8 @@ class System:
     def calibrate(self):
         print('Starting calibration')
         self.global_state = GlobalState.CALIBRATING
-        max_speed = .5
-        min_speed = .25
+        max_speed = .4
+        min_speed = .2
 
         # Assume this is on a different thread
         self.calibration_state = CalibrationState.MAX_FAST
@@ -624,9 +624,7 @@ class System:
             self.stop() # Probably isn't necessary because it should be at the limit
             self.on = False
             self.cleanup()
-            # TODO: sudo shutdown 0
-            print('Sudo shutdown 0')
-            # subprocess.run(['sudo', 'shutdown', '0'])
+            subprocess.run(['sudo', 'shutdown', '0'])
             exit()
 
         self.global_state = GlobalState.SHUTDOWN
@@ -642,25 +640,29 @@ class System:
         exit()
 
     def fail_state_cb(self):
-        self.fail_state = True
-        self.motor.disable()
-        self.set_speed(0)
-        self.target_pos = self.sensors.read()['position']
-        self.gpio_moving = False
-        self.command_ready = False
+        print('FAIL STATE DETECTED')
+        # self.fail_state = True
+        # self.motor.disable()
+        # self.set_speed(0)
+        # self.target_pos = self.sensors.read()['position']
+        # self.gpio_moving = False
+        # self.command_ready = False
 
     def is_fail_state(self):
+        if self.state == SYSTEM_STATE.ACCELERATING:
+            return False
         return abs(self.get_velocity() - self.expected_velocity()) > FAIL_STATE_TOLERANCE
 
     def event_loop(self):
         # self.run_calibration()
         self.gpio_moving = False
         locked = False
-        # start_server(self.Q, "taylorpi.local", OSC_PORT)
+        # start_server(self.Q, "localhost", OSC_PORT)
         self.osc.start()
         self.emit_state()
         self.command_handler()
         prev_pos = None
+        start_power = None
         while self.on:
             # print(f'Velocity delta: {self.vel_delta()}')
             # If spacebar is pressed, stop the system
@@ -670,8 +672,19 @@ class System:
             sensors = self.sensors.read()
             # print(f'GPIOMOVING: {self.gpio_moving}')
             # print(f'LOCKED: {locked}')
-            if self.config['log_state']:
-                self.print_state()
+            # if self.config['log_state']:
+            # self.print_state()
+
+            # print(sensors)
+
+            if sensors['power']:
+                if start_power is None:
+                    start_power = time.time()
+                else:
+                    if time.time() - start_power > 5:
+                        self.shut_down()
+            else:
+                start_power = None
 
             # if self.is_fail_state() and self.global_state != GlobalState.CALIBRATING:
             #     self.fail_state_cb()
@@ -698,6 +711,29 @@ class System:
                     self.gpio_moving = False
                     locked = False
                     self.command_ready = True
+
+                if not self.gpio_moving:
+                    if sensors['secondary_up'] and sensors['secondary_down']:
+                        locked = True
+                        self.stop()
+                        self.gpio_moving = True
+                        self.command_ready = False
+
+                    if not self.gpio_moving and sensors['secondary_up']:
+                        self.gpio_target_motor_speed = 1
+                        self.gpio_moving = True
+                        self.command_ready = False
+
+                    if not self.gpio_moving and sensors['secondary_down']:
+                        self.gpio_target_motor_speed = -1
+                        self.gpio_moving = True
+                        self.command_ready = False
+
+                    if self.gpio_moving and not sensors['secondary_up'] and not sensors['secondary_down']:
+                        self.stop()
+                        self.gpio_moving = False
+                        locked = False
+                        self.command_ready = True
 
                 # GPIO Target Speeds
                 if self.gpio_target_motor_speed and self.gpio_moving and not locked:

@@ -1,12 +1,11 @@
 import { handler } from './build/handler.js';
-import express from 'express';
 import http from 'http';
 
 
 const server = http.createServer(handler);
 
-const PORT = 80;
-const HOSTNAME = 'taylorpi.local';
+const PORT = 8080;
+const HOSTNAME = 'localhost';
 
 
 server.listen(PORT, HOSTNAME, () => {
@@ -25,5 +24,5 @@ server.listen(PORT, HOSTNAME, () => {
 // app.use(handler);
 
 // app.listen(80, () => {
-// 	console.log('listening on taylorpi.local');
+// 	console.log('listening on localhost');
 // });

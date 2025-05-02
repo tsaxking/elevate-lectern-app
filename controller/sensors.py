@@ -8,14 +8,25 @@ import numpy as np
 
 
 class Switch:
-    def __init__(self, pin: int):
+    def __init__(self, pin: int, flip: bool):
         if not GPIO.getmode():
             GPIO.setmode(GPIO.BCM)
         self.pin = pin
+        self.flip = flip
         GPIO.setup(pin, GPIO.IN)
 
     def read(self):
-        return not GPIO.input(self.pin)
+        input = GPIO.input(self.pin)
+        if self.flip:
+            if input == 0:
+                return True
+            else:
+                return False
+        else:
+            if input == 1:
+                return True
+            else:
+                return False
 
     def cleanup(self):
         pass

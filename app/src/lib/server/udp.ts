@@ -9,7 +9,7 @@ const socket = dgram.createSocket('udp4');
 const os_info = {
     cpu_usage: 0,
     cpu_temp: 0,
-    ip_address: 'taylorpi.local',
+    ip_address: 'localhost',
     ram: 0,
     updated: Date.now(),
     osc: 12321,
@@ -41,7 +41,7 @@ let system: unknown,
     calibration: unknown;
 
 socket.on('message', (msg, rinfo) => {
-    // if (rinfo.address !== 'taylorpi.local') return; // Only allow local connections
+    // if (rinfo.address !== 'localhost') return; // Only allow local connections
     try {
         const data = JSON.parse(msg.toString());
         // if (data.i_am === 'calibration') {
