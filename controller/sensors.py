@@ -5,6 +5,30 @@ import threading
 import time
 import utils
 import numpy as np
+import busio
+import adafruit_vl53l0x
+import board
+
+class TOF:
+    def __init__(self):
+        self.i2c = busio.I2C(board.SCL, board.SDA)
+        self.sensor = adafruit_vl53l0x.VL53L0X(self.i2c)
+        self.points = []
+        time.sleep(0.2)
+
+    def read(self):
+        value = self.sensor.range #* 15.5 / 27
+        self.points.append(value)
+        if len(self.points) > 5:
+            self.points.pop(0)
+        if len(self.points) < 3:
+            return utils.cm_to_in(value / 10)
+        data = utils.remove_outliers_zscore(self.points, 3)
+        avg = np.average(data)
+        return utils.cm_to_in(avg / 10)
+
+    def cleanup(self):
+        print('Cleaning up TOF')
 
 
 class Switch:

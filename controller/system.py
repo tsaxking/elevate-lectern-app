@@ -16,7 +16,7 @@ the current operation, delete all commands in the queue, and stop the motor.
 from motor import Motor, MotorState
 from typing import TypedDict
 from RPi import GPIO
-from sensors import Switch, Potentiometer, Ultrasonic, UltrasonicConfig
+from sensors import Switch, Potentiometer, Ultrasonic, UltrasonicConfig, TOF
 from time import sleep
 from enum import Enum, auto
 from Q import Queue, Command
@@ -37,14 +37,15 @@ def clear():
     print(chr(27) + "[2J")
 
 TICK_SPEED = 15
-MAX_SPEED = .6
-ACCEL_RATE = 0.02 # Acceleration rate
+MAX_SPEED = .5
+ACCEL_RATE = 0.04 # Acceleration rate
 SPEED_TOLERANCE = 0.03
-POS_TOLERANCE = 1
+POS_TOLERANCE = 0.5
 SLOW_DOWN_DISTANCE = 2
-LIMIT_SLOW_DOWN_DISTANCE = 2
+LIMIT_SLOW_DOWN_DISTANCE = 3
 LIMIT_SLOW_DOWN_SPEED = 0.35
-POSITION_OFFSET = 0
+LOWER_POSITION_OFFSET = 0
+UPPER_POSITION_OFFSET = 27 # in
 FAIL_STATE_TOLERANCE = 3 # in/s
 FIXED_SPEED = .75
 
@@ -71,8 +72,10 @@ class SystemConfig(TypedDict):
     secondary_speed_channel: int
     status_led_pin: int
     osc_led_pin: int
-    trigger_pin: int
-    echo_pin: int
+    down_trigger_pin: int
+    down_echo_pin: int
+    up_trigger_pin: int
+    up_echo_pin: int
 
 class SensorState(TypedDict):
     position: float = 0
@@ -120,16 +123,54 @@ class UDPSystemState(TypedDict):
     proximity_up: float
     proximity_down: float
 
+class DualPos:
+    def __init__(self, config: SystemConfig):
+        self.down = Ultrasonic(UltrasonicConfig(
+            echo=config['down_echo_pin'],
+            trig=config['down_trigger_pin'],
+            threading=True,
+            tick_speed=100,
+            offset=0
+        ))
+        self.up = Ultrasonic(
+            UltrasonicConfig(
+                echo=config['up_echo_pin'],
+                trig=config['up_trigger_pin'],
+                threading=True,
+                tick_speed=TICK_SPEED,
+                offset=0
+            )
+        )
+
+    def read():
+        up = self.up.read()
+        down = self.down.read()
+        if up < down:
+            return up + UPPER_POSITION_OFFSET
+        else:
+            return down + LOWER_POSITION_OFFSET
+
 class Sensors:
     def __init__(self, config: SystemConfig):
         GPIO.setmode(GPIO.BCM)
-        self.position = Ultrasonic(UltrasonicConfig(
-            echo=config['echo_pin'],
-            trig=config['trigger_pin'],
-            threading=True,
-            tick_speed=100,
-            offset=POSITION_OFFSET
-        ))
+        self.position = TOF()
+        # self.position = DualPos(config)
+        # self.position = Ultrasonic(UltrasonicConfig(
+        #     echo=config['echo_pin'],
+        #     trig=config['trigger_pin'],
+        #     threading=True,
+        #     tick_speed=100,
+        #     offset=LOWER_POSITION_OFFSET
+        # ))
+        # self.up_position = Ultrasonic(
+        #     UltrasonicConfig(
+        #         echo=config['up_echo_pin'],
+        #         trig=config['up_trigger_pin'],
+        #         threading=True,
+        #         tick_speed=TICK_SPEED,
+        #         offset=UPPER_
+        #     )
+        # )
         self.max_limit = Switch(config['max_limit_pin'], False)
         self.min_limit = Switch(config['min_limit_pin'], False)
         self.power = Switch(config['power_pin'], False)
@@ -223,7 +264,7 @@ class System:
         self.velocity = 0
         self.prev_pos = -1
         self.osc = OSC_Server(OSC_Config(
-            ip="localhost",
+            ip="0.0.0.0",
             port=OSC_PORT,
             queue=self.Q,
             threading=True,
@@ -394,31 +435,35 @@ class System:
         def e_stop_server():
             server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Allow reuse of address
-            server.bind(('localhost', E_STOP_PORT))
+            server.bind(('0.0.0.0', E_STOP_PORT))
             server.listen(1)
-            print(f"Server started on {'localhost'}:{E_STOP_PORT}")
+            print(f"Server started on {'0.0.0.0'}:{E_STOP_PORT}")
 
             def start_handler():
                 while self.on:
                     conn, addr = server.accept()
                     print(f"Connection from {addr}")
-                    self.connections.append(addr[0])
+                    self.connections.append(addr)
                     conn.setblocking(0)
 
-                    while self.on:
-                        ready_to_read, _, _ = select.select([conn], [], [], 1)  # Timeout of 1 second
-                        if ready_to_read:
-                            data = conn.recv(1024)
-                            if not data:
-                                break
-                            data = data.decode()
-                            print(f"Received: {data}")
-                            if data == "stop":
-                                print('Stopping system')
-                                self.Q.clear()
-                                self.stop()
+                    try:
+                        while self.on:
+                            ready_to_read, _, _ = select.select([conn], [], [], 1)  # Timeout of 1 second
+                            if ready_to_read:
+                                data = conn.recv(1024)
+                                if not data:
+                                    break
+                                data = data.decode()
+                                print(f"Received: {data}")
+                                if data == "stop":
+                                    print('Stopping system')
+                                    self.Q.clear()
+                                    self.stop()
 
-                    conn.close()
+                        conn.close()
+                    except:
+                        print("Error accepting connection")
+                        break
 
             t = threading.Thread(target=start_handler)
             t.daemon = True
@@ -430,18 +475,26 @@ class System:
         e_stop_server()
 
     def emit_state(self):
-        def send_state(state, value):
+        def send_state(state: UDPSystemState):
+        # def send_state(state: str, value):
             for connection in self.connections:
                 try:
+                    # print(f'Emitting to {connection} {state}')
                     self.socket.sendto(
-                        f'CUSTOM-VARIABLE lectern_{state} SET-VALUE {value}'.encode('utf-8'),
-                        (connection, 16759)
+                        # f'CUSTOM-VARIABLE lectern_{state} SET-VALUE {value}'.encode('utf-8'),
+                        # f'{state} {value}'.encode('utf-8'),
+                        json.dumps(state).encode('utf-8'),
+                        (connection[0], 11111)
                     )
                 except Exception as e:
-                    print(f"Error sending state: {e}")
-                    self.connections.remove(connection)
-                    connection.close()
-                    print("Connection closed")
+                    try:
+                        print(f"Error sending state: {e}")
+                        self.connections.remove(connection)
+                        connection.close()
+                        print("Connection closed")
+                    except Exception as e:
+                        print(f"Error closing connection: {e}")
+                        break
                     break
         def run():
             # calibration_sent = False
@@ -471,13 +524,14 @@ class System:
                     json.dumps(state).encode('utf-8'),
                     ('localhost', UDP_PORT)
                 )
-                send_state('status', self.global_state.to_dict())
-                send_state('state', self.state.to_dict())
-                send_state('target', round(self.target_pos, SIG_FIGS))
-                send_state('position', round(S['position'], SIG_FIGS))
-                send_state('ready', self.command_ready)
-                send_state('calibrated', self.calibration_state == CalibrationState.DONE)
-                send_state('fail', self.is_fail_state())
+                send_state(state)
+                # send_state('status', self.global_state.to_dict())
+                # send_state('state', self.state.to_dict())
+                # send_state('target', round(self.target_pos, SIG_FIGS))
+                # send_state('position', round(S['position'], SIG_FIGS))
+                # send_state('ready', self.command_ready)
+                # send_state('calibrated', self.calibration_state == CalibrationState.DONE)
+                # send_state('fail', self.is_fail_state())
                 # if not calibration_sent and self.calibration_state == CalibrationState.DONE:
                 #     self.socket.sendto(
                 #         json.dumps(self.calibration.__dict__).encode('utf-8'),
@@ -772,19 +826,20 @@ class System:
                     self.start_pos = current_pos
 
                 distance_to_target = self.target_pos_with_time - current_pos
-                reached = abs(distance_to_target) < POS_TOLERANCE
-                if reached:
-                    self.stop()
-                    self.target_pos_with_time = -1
-                    self.start_pos = -1
-                    distance_to_target = 0
-                    self.command_ready = True
+                reached = abs(distance_to_target) <= POS_TOLERANCE
 
                 slow_down = abs(distance_to_target) - SLOW_DOWN_DISTANCE if abs(distance_to_target) < SLOW_DOWN_DISTANCE else 0
                 if distance_to_target > 0 and not reached:
                     self.set_speed(1 + slow_down / 50)
                 elif distance_to_target < 0 and not reached:
                     self.set_speed(-1 - slow_down / 50)
+
+                if reached:
+                    self.stop()
+                    self.target_pos_with_time = -1
+                    self.start_pos = -1
+                    distance_to_target = 0
+                    self.command_ready = True
 
             if self.target_pos != -1:
                 current_pos = sensors['position']
@@ -793,6 +848,13 @@ class System:
                 
                 distance_to_target = self.target_pos - current_pos
                 reached = abs(distance_to_target) < POS_TOLERANCE
+
+                slow_down = abs(distance_to_target) - SLOW_DOWN_DISTANCE if abs(distance_to_target) < SLOW_DOWN_DISTANCE else 0
+                if distance_to_target > 0 and not reached:
+                    self.set_speed(1 + slow_down / 50)
+                elif distance_to_target < 0 and not reached:
+                    self.set_speed(-1 - slow_down / 50)
+
                 if reached:
                     self.stop()
                     self.target_pos = -1
@@ -800,11 +862,7 @@ class System:
                     distance_to_target = 0
                     self.command_ready = True
 
-                slow_down = abs(distance_to_target) - SLOW_DOWN_DISTANCE if abs(distance_to_target) < SLOW_DOWN_DISTANCE else 0
-                if distance_to_target > 0 and not reached:
-                    self.set_speed(1 + slow_down / 50)
-                elif distance_to_target < 0 and not reached:
-                    self.set_speed(-1 - slow_down / 50)
+
 
             # If the system is calibrated, and it is close to a limit, slow down drastically as it approaches
             if self.calibration_state == CalibrationState.DONE:

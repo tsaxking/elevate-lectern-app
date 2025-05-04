@@ -34,8 +34,10 @@ def main():
         # secondary_speed_channel=1,
         status_led_pin=16,
         osc_led_pin=12,
-        trigger_pin=21,
-        echo_pin=20
+        # down_trigger_pin=21,
+        # down_echo_pin=20,
+        # up_trigger_pin=0,
+        # up_echo_pin=0
     ))
     def on_exit():
         motor.disable()
@@ -58,6 +60,8 @@ def main():
         system.event_loop()
     finally:
         on_exit()
+
+    return system
 
 if __name__ == '__main__':
     main()
