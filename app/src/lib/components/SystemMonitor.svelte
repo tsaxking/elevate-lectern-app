@@ -5,6 +5,7 @@
 	import OsChart from './OS_Chart.svelte';
 
     const os_info = $derived($system.os_info);
+    const tcp_connected = $derived($system.connected);
 </script>
 
 <style>
@@ -29,7 +30,7 @@
                             <pre class="p-0 m-0 no-scroll-x bg-black text-primary ">
   Network Info
   {os_info.ip_address}
-  tcp port {os_info.tcp}
+  tcp port {os_info.tcp} {tcp_connected ? '✔️' : '❌'}
   osc port {os_info.osc}
   udp port {os_info.udp}
                             </pre>

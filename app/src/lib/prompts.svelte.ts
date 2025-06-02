@@ -91,6 +91,13 @@ export const prompt = async (message: string, config?: PromptConfig) => {
                         input?.addEventListener("input", (e) => {
                             value = (e.target as HTMLInputElement).value;
                             valid = !config?.validate || config.validate(value);
+                            if ((e as KeyboardEvent).key === "Enter" && !config?.multiline) {
+                                e.preventDefault();
+                                if (!valid) return;
+                                res(config?.parser ? config.parser(value.trim()) : value.trim());
+                            }
+                            value = (e.target as HTMLInputElement).value;
+                            valid = !config?.validate || config.validate(value);
                             input.classList.toggle("is-invalid", !valid);
                         });
                     }

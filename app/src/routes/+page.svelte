@@ -27,4 +27,9 @@
             <ShowCard show={show} />
         </div>
     {/each}
+    <div class="row mb-3">
+        <div class="col">
+            <a href="/docs" class="btn btn-secondary">Docs</a>
+        </div>
+    </div>
 </div>

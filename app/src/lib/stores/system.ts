@@ -75,6 +75,7 @@ export const system = new System({
         }
     },
     connected: false,
+    tcp_connected: false,
 });
 
 listen('state', (state) => {
@@ -85,6 +86,7 @@ listen('state', (state) => {
             // updated: nowSmall(5).rebuild(state.os_info.updated).getTime(),
         },
         system: state.system ?? system.state.system,
-        connected: !!state.system
+        connected: !!state.system,
+        tcp_connected: state.tcp_connected ?? system.state.tcp_connected,
     });
 });

@@ -2,7 +2,8 @@
 	import { Show } from "$lib/stores/show.svelte";
     import { system } from "$lib/stores/system";
 	import { BootstrapColor, type PresetConfig } from "$lib/types.js";
-    import { send } from "$lib/osc.js";
+    import { All as OSC } from "$lib/osc.js";
+    import { All as TCP } from '$lib/tcp.js';
     import Modal from "./Modal.svelte";
     import { goto } from "$app/navigation";
 	import { confirm, prompt, select } from "$lib/prompts.svelte";
@@ -14,6 +15,7 @@
     }
 
     let { show = $bindable() }: Props = $props();
+    let offset = $state(0);
 
     // $inspect(show);
 
@@ -29,7 +31,9 @@
     const buttons: Button[] = $derived([{
             name: 'Stop',
             action: () => {
-                send('stop', undefined);
+                // send('stop', undefined);
+                // OSC.Lectern.stop();
+                TCP.stop();
             },
             color: BootstrapColor.DANGER,
             disabled: !$system.connected,
@@ -37,28 +41,32 @@
         {
             name: 'Small Bump Up',
             action: async () => {
-                send('bump', .5);
+                // send('bump', .5);
+                OSC.Lectern.bump(.5);
             },
             color: BootstrapColor.PRIMARY,
             disabled: !$system.connected,
         }, {
             name: 'Small Bump Down',
             action: async () => {
-                send('bump', -.5);
+                // send('bump', -.5);
+                OSC.Lectern.bump(-.5);
             },
             color: BootstrapColor.PRIMARY,
             disabled: !$system.connected,
         }, {
             name: 'Big Bump Up',
             action: async () => {
-                send('bump', 1);
+                // send('bump', 1);
+                OSC.Lectern.bump(1);
             },
             color: BootstrapColor.PRIMARY,
             disabled: !$system.connected,
         }, {
             name: 'Big Bump Down',
             action: async () => {
-                send('bump', -1);
+                // send('bump', -1);
+                OSC.Lectern.bump(-1);
             },
             color: BootstrapColor.PRIMARY,
             disabled: !$system.connected,
@@ -66,17 +74,25 @@
         {
             name: 'Go To',
             action: async () => {
-                send('go_to_in', [1, 2]);
+                const value = await prompt('Enter Height');
+                if (!value) return;
+                if (isNaN(Number(value))) return alert('Invalid Value, it must be a numbr');
+                const height = Math.min(
+                    Math.max(Number(value), $system.system.calibration.bottom || 0),
+                    $system.system.calibration.top || 20
+                );
+                OSC.Lectern.goTo(height);
             },
             color: BootstrapColor.INFO,
             disabled: !$system.connected,
         },
         ...$show.presets.map(p => ({
-            name: p.name,
+            name: p.name + ' (' + p.state.height + ')',
             action: async () => {
                 if (!await confirm(`Go to ${p.name}?`)) return;
                 // send('go_to', p.state.height);
-                send('preset', show.id + '.' + p.id);
+                // send('preset', show.id + '.' + p.id);
+                OSC.Lectern.goTo(p.state.height + offset);
             },
             color: BootstrapColor.SECONDARY,
             disabled: !$system.connected,
@@ -122,27 +138,30 @@
             name: 'Calibrate',
             action: async () => {
                 if (await confirm('Run calibration? (This will lock the system until the calibration is complete)')) {
-                    send('calibrate', undefined)
+                    // send('calibrate', undefined)
+                    OSC.Lectern.calibrate();
                 }
             },
             color: BootstrapColor.WARNING,
             disabled: !$system.connected,
         },
-        {
-            name: 'Shutdown',
-            action: async () => {
-                if (await confirm('Shut down?')) {
-                    send('shutdown', undefined);
-                }
-            },
-            color: BootstrapColor.DANGER,
-            disabled: !$system.connected,
-        }
+        // {
+        //     name: 'Shutdown',
+        //     action: async () => {
+        //         if (await confirm('Shut down?')) {
+        //             // send('shutdown', undefined);
+        //             osc.shutdown();
+        //         }
+        //     },
+        //     color: BootstrapColor.DANGER,
+        //     disabled: !$system.connected,
+        // }
     ]);
 
     let motorSpeed = $state(0);
     const commitSpeed = () => {
-        send('move', motorSpeed.toFixed(3));
+        // send('move', motorSpeed.toFixed(3));
+        OSC.Lectern.move(motorSpeed);
     };
 
     let speedTimeout: NodeJS.Timeout;
@@ -157,7 +176,8 @@
     });
 
     const commitPos = () => {
-        send('go_to', pos.toFixed(3));
+        // send('go_to', pos.toFixed(3));
+        OSC.Lectern.goTo(pos + offset);
     };
 
     let modal: Modal;
@@ -179,7 +199,8 @@
                         if (speedTimeout) clearTimeout(speedTimeout);
                         speedTimeout = setTimeout(commitSpeed, 20);
                     }} onchange={() => {
-                        send('stop', undefined);
+                        // send('stop', undefined);
+                        OSC.Lectern.stop();
                         motorSpeed = 0;
                     }} 
                         style="

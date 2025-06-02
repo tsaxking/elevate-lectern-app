@@ -110,3 +110,14 @@ def cm_to_in(cm: float) -> float:
     :return: Length in inches.
     """
     return cm / 2.54
+
+def clamp(value: float, min_value: float, max_value: float) -> float:
+    """
+    Clamp a value between a minimum and maximum value.
+
+    :param value: The value to clamp.
+    :param min_value: The minimum value.
+    :param max_value: The maximum value.
+    :return: The clamped value.
+    """
+    return max(min(value, max_value), min_value)

@@ -3,13 +3,14 @@ import dgram from 'dgram';
 import { getIp } from './utils';
 import sys from 'systeminformation';
 import { $Math } from '$lib/math';
+import { Connection } from './osc';
 
 const socket = dgram.createSocket('udp4');
 
 const os_info = {
     cpu_usage: 0,
     cpu_temp: 0,
-    ip_address: 'localhost',
+    ip_address: '127.0.0.1',
     ram: 0,
     updated: Date.now(),
     osc: 12321,
@@ -66,7 +67,8 @@ socket.on('error', (err) => {
 setInterval(() => {
     sse.send('state', {
         system,
-        os_info
+        os_info,
+        tcp_connected: Connection.connected,
     });
 
     if (lastMessage < Date.now() - 1000) {

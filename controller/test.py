@@ -1,24 +1,27 @@
-import sensors
+import asyncio
 
-def clear():
-    print(chr(27) + "[2J")
-def main():
-    sensor = sensors.TOF()
-    # sensor = sensors.Ultrasonic(sensors.UltrasonicConfig(
-    #     echo=20,
-    #     trig=21,
-    #     threading=True,
-    #     tick_speed=15,
-    #     offset=0
-    # ))
-    # A = sensors.Switch(18, False)
-    # B = sensors.Switch(24, False)
+
+async def test_async_function():
+    print("1 Start")
+    await asyncio.sleep(1)
+    print("1 End")
+
+async def second_loop():
     while True:
-        print(sensor.read())
-        # print(A.read())
-        # if B.read():
-        #     print('B')
-        # if not A.read() and not B.read():
-        #     print('Not A or B')
+        print("2 Start")
+        await asyncio.sleep(3)
+        print("2 End")
 
-main()
+async def async_event_loop():
+    while True:
+        await test_async_function()
+        await asyncio.sleep(2)
+
+async def main():
+    asyncio.create_task(second_loop())
+    asyncio.create_task(async_event_loop())
+    await asyncio.sleep(10)  # Run for a limited time to see the output
+
+if __name__ == "__main__":
+    asyncio.run(main())
+    print("Main function completed.")

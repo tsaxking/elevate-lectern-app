@@ -1,37 +1,37 @@
 import osc from 'osc';
 import { getIp } from './utils';
-import type { OscCommands } from '$lib/events';
+import type { OscCommand, TCPCommand } from '$lib/events';
 import net from 'net';
 import { SimpleEventEmitter } from '$lib/event-emitter';
 
-const udpPort = new osc.UDPPort({
+const oscPort = new osc.UDPPort({
     // localAddress: 'localhost',
     // localPort: 12321,
     remoteAddress: '127.0.0.1',
     remotePort: 12321
 });
 
-udpPort.open();
+oscPort.open();
 
-udpPort.on('ready', () => {
+oscPort.on('ready', () => {
     console.log('OSC ready');
 });
 
-// const em = new SimpleEventEmitter<'stop'>();
-
 const tcp = new net.Socket();
 
-let connected = false;
+export const Connection = {
+    connected: false,
+}
 
 let interval: NodeJS.Timeout;
 
 const connect = () => {
-    if (connected) return;
+    if (Connection.connected) return;
     tcp.connect(11111, 'localhost');
 };
 
 tcp.on('connect', () => {
-    connected = true;
+    Connection.connected = true;
     console.log('TCP connected');
     clearInterval(interval);
 });
@@ -46,8 +46,8 @@ tcp.on('error', (err) => {
 });
 
 const disconnect = () => {
-    if (!connected) return;
-    connected = false;
+    if (!Connection.connected) return;
+    Connection.connected = false;
     console.log('TCP disconnected');
 
     if (interval) clearInterval(interval);
@@ -58,16 +58,16 @@ const disconnect = () => {
 
 connect();
 
-export const send = <K extends keyof OscCommands>(command: K, data: OscCommands[K]) => {
-    if (command === 'stop') return stop();
-    udpPort.send({ address: `/${command}`, args: data as any });
+export const sendOSC = <K extends OscCommand>(command: K) => {
+    oscPort.send({ address: command, args: [0] });
 }
 
-const stop = () => {
-    tcp.write('stop');
+export const sendTCP = <K extends TCPCommand>(command: K) => {
+    if (!Connection.connected) connect();
+    tcp.write(command);
 }
 
 const onExit = () => {
-    udpPort.close();
-    tcp.end();
+    oscPort.close();
+    // tcp.end();
 };

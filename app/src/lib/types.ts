@@ -68,6 +68,7 @@ export type SystemState = {
         udp: number;
     };
     connected: boolean;
+    tcp_connected: boolean;
 };
 
 export type Calibration = {

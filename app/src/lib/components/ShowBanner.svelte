@@ -53,8 +53,6 @@
         const b = c.detectContrast(Color.fromName('black'));
 
         textColor = w > b ? 'white' : 'black';
-
-        console.log('textColor', textColor);
     });
 </script>
 
