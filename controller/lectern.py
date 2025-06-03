@@ -28,7 +28,7 @@ from PID import PID
 def clear():
     print(chr(27) + "[2J")
 
-MAX_SPEED = .87
+MAX_SPEED = .5
 ACCEL_RATE = 0.08 # Acceleration rate
 SPEED_TOLERANCE = 0.05
 POS_TOLERANCE = .25
@@ -194,7 +194,7 @@ class Lectern:
 
         self.gpio_target_motor_speed = 0
         self.gpio_moving = False
-        self.gpio_fixed_speed = 1
+        self.gpio_fixed_speed = 0.3
 
         self.start_pos = -1  # Used for position tracking when moving to a target position
         self.target_pos = -1
@@ -415,9 +415,11 @@ class Lectern:
 
     async def start_up(self):
         self.set_speed(0.3)
+        await asyncio.sleep(1)
+        self.set_speed(0)
         await asyncio.sleep(0.5)
         self.set_speed(-0.3)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1)
         self.set_speed(0)
 
     async def event_loop(self):
@@ -602,3 +604,4 @@ class Lectern:
             self.tasks.append(asyncio.create_task(led.start()))
 
         self.tasks.append(asyncio.create_task(self.event_loop()))
+        self.tasks.append(asyncio.create_task(self.start_up()))
