@@ -8,8 +8,11 @@ class PID:
         self.prev_error = 0
         self.integral = 0
         self.last_time = None
+        self.enabled = True
 
-    def compute(self, target, actual):
+    def compute(self, target, actual, current_speed):
+        # if not self.enabled:
+        #     return current_speed
         now = time.time()
         dt = (now - self.last_time) if self.last_time else 0.01
         self.last_time = now

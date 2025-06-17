@@ -526,7 +526,7 @@ class Lectern:
                     #     self.set_speed(-1 - slow_down / 50)
 
                     if not reached:
-                        speed = self.pid.compute(self.target_pos, current_pos)
+                        speed = self.pid.compute(self.target_pos, current_pos, self.motor.speed)
                         speed = clamp(speed, -1.0, 1.0)  # prevent overspeeding
                         self.set_speed(speed)
                     else:
@@ -545,21 +545,24 @@ class Lectern:
                         if distance_to_top <= 0:
                             stop = True
                         elif distance_to_top < LIMIT_SLOW_DOWN_DISTANCE:
-                            # Inverse logarithmic slowdown: drastically reduce speed as approaching the limit
                             self.speed_multiplier = 1 - math.log1p((LIMIT_SLOW_DOWN_DISTANCE - distance_to_top) / LIMIT_SLOW_DOWN_DISTANCE)
+                            self.pid.enabled = False  # Disable PID near upper limit
                         else:
-                            self.speed_multiplier = 1  # No slowdown if far away
+                            self.speed_multiplier = 1
+                            self.pid.enabled = True
                     elif self.motor.speed < 0:  # Moving down
                         distance_to_bottom = position - self.calibration.bottom
                         if distance_to_bottom <= 0:
                             stop = True
                         elif distance_to_bottom < LIMIT_SLOW_DOWN_DISTANCE:
-                            # Inverse logarithmic slowdown: drastically reduce speed as approaching the limit
                             self.speed_multiplier = 1 - math.log1p((LIMIT_SLOW_DOWN_DISTANCE - distance_to_bottom) / LIMIT_SLOW_DOWN_DISTANCE)
+                            self.pid.enabled = False  # Disable PID near lower limit
                         else:
-                            self.speed_multiplier = 1  # No slowdown if far away
+                            self.speed_multiplier = 1
+                            self.pid.enabled = True
                     else:
-                        self.speed_multiplier = 1  # No movement, no speed change
+                        self.speed_multiplier = 1
+                        self.pid.enabled = True
 
                 if self.target_motor_speed == 0 and abs(self.motor.speed) < SPEED_TOLERANCE or stop:
                     self.prev_speed = 0

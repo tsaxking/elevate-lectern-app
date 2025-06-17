@@ -172,9 +172,14 @@
                     break;
                 case 'Enter':
                 case ' ':
-                    event.preventDefault(); 
-                    if (current) {
-                        edit(current);
+                    if (event.shiftKey) {
+                        event.preventDefault();
+                        store();
+                    } else {
+                        event.preventDefault(); 
+                        if (current) {
+                            edit(current);
+                        }
                     }
                     break;
             }
@@ -374,6 +379,9 @@
             </li>
             <li>
                 {@render text('i')} will show this instructions modal.
+            </li>
+            <li>
+                {@render text('Ctrl + Shift + Space')} or {@render text('Ctrl + Shift + Enter')} will prompt you to store a new cue.
             </li>
         </ul>
     {/snippet}
