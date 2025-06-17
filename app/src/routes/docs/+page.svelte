@@ -1,3 +1,8 @@
+{#snippet point(name)}
+    <span class="text-info">{`{${name}}`}</span>
+{/snippet}
+
+
 <div class="container">
     <div class="row mb-3">
         <h1>Documentation</h1>
@@ -24,10 +29,10 @@
         <div class="col">
             <ul>
                 <li>
-                    <strong>/lectern/bump/{"{distance}"}</strong> - Bump the lectern by a specified distance in inches
+                    <strong>/lectern/bump/{@render point('distance')}</strong> - Bump the lectern by a specified distance in inches
                 </li>
                 <li>
-                    <strong>/lectern/move/{"{speed}"}</strong> - Move the lectern at a specified speed in % of max motor speed (-1 to 1)
+                    <strong>/lectern/move/{@render point('speed')}</strong> - Move the lectern at a specified speed in % of max motor speed (-1 to 1)
                 </li>
                 <li>
                     <strong>/lectern/stop</strong> - Stop the lectern movement (use with /move)
@@ -37,11 +42,11 @@
                     </small>
                 </li>
                 <li>
-                    <strong>/lectern/go_to/{"{position}"}</strong> - Move the lectern to a specified position in inches
+                    <strong>/lectern/go_to/{@render point('position')}</strong> - Move the lectern to a specified position in inches
                 </li>
                 <li>
                     <strong>
-                        /lectern/go_to/{"{position}"}/in/{"{time}"}</strong> - Move the lectern to a specified position in inches over a specified time in seconds 
+                        /lectern/go_to/{@render point('position')}/in/{@render point('time')}</strong> - Move the lectern to a specified position in inches over a specified time in seconds 
                         <br>
                         <small class="text-muted">
                             *Note: This will not exceed the maximum speed of the motors, so if the time is too short, the actual movement may be slower than requested.
@@ -51,39 +56,39 @@
                     <strong>/lectern/calibrate</strong> - Runs the lectern calibration sequence
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/bump/{"{distance}"}</strong> - Bump the teleprompter by a specified distance in inches
+                    <strong>/teleprompter/{@render point('id')}/bump/{@render point('distance')}</strong> - Bump the teleprompter by a specified distance in inches
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/move/{"{speed}"}</strong> - Move the teleprompter at a specified speed in % of max motor speed (-1 to 1)
+                    <strong>/teleprompter/{@render point('id')}/move/{@render point('speed')}</strong> - Move the teleprompter at a specified speed in % of max motor speed (-1 to 1)
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/go_to/{"{position}"}</strong> - Move the teleprompter to a specified position in inches
+                    <strong>/teleprompter/{@render point('id')}/go_to/{@render point('position')}</strong> - Move the teleprompter to a specified position in inches
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/go_to/{"{position}"}/in/{"{time}"}</strong> - Move the teleprompter to a specified position in inches over a specified time in seconds
+                    <strong>/teleprompter/{@render point('id')}/go_to/{@render point('position')}/in/{@render point('time')}</strong> - Move the teleprompter to a specified position in inches over a specified time in seconds
                     <br>
                     <small class="text-muted">
                         *Note: This will not exceed the maximum speed of the motors, so if the time is too short, the actual movement may be slower than requested.
                     </small>
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/stop</strong> - Stop the teleprompter movement
+                    <strong>/teleprompter/{@render point('id')}/stop</strong> - Stop the teleprompter movement
                     <br>
                     <small class="text-muted">
                         *Note: This may not stop movement immediately if there are commands that take time. Please use the TCP protocol for full system stop.
                     </small>
                 </li>
                 <li>
-                    <strong>/bump/{"{distance}"}</strong> - Bump all systems by a specified distance in inches
+                    <strong>/bump/{@render point('distance')}</strong> - Bump all systems by a specified distance in inches
                 </li>
                 <li>
-                    <strong>/move/{"{speed}"}</strong> - Move all systems at a specified speed in % of max motor speed (-1 to 1)
+                    <strong>/move/{@render point('speed')}</strong> - Move all systems at a specified speed in % of max motor speed (-1 to 1)
                 </li>
                 <li>
-                    <strong>/go_to/{"{position}"}</strong> - Move all systems to a specified position in inches
+                    <strong>/go_to/{@render point('position')}</strong> - Move all systems to a specified position in inches
                 </li>
                 <li>
-                    <strong>/go_to/{"{position}"}/in/{"{time}"}</strong> - Move all systems to a specified position in inches over a specified time in seconds
+                    <strong>/go_to/{@render point('position')}/in/{@render point('time')}</strong> - Move all systems to a specified position in inches over a specified time in seconds
                     <br>
                     <small class="text-muted">
                         *Note: This will not exceed the maximum speed of the motors, so if the time is too short, the actual movement may be slower than requested.
@@ -120,7 +125,7 @@
                     <strong>/lectern/stop</strong> - Stop the lectern movement immediately
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/stop</strong> - Stop the teleprompter movement immediately
+                    <strong>/teleprompter/{@render point('id')}/stop</strong> - Stop the teleprompter movement immediately
                 </li>
                 <li>
                     <strong>/reboot</strong> - Reboot all systems immediately
@@ -129,7 +134,7 @@
                     <strong>/lectern/reboot</strong> - Reboot the lectern system immediately
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/reboot</strong> - Reboot the teleprompter system immediately
+                    <strong>/teleprompter/{@render point('id')}/reboot</strong> - Reboot the teleprompter system immediately
                 </li>
                 <li>
                     <strong>/home</strong> - Moves all systems to their home position
@@ -138,7 +143,7 @@
                     <strong>/lectern/home</strong> - Moves the lectern to its home position
                 </li>
                 <li>
-                    <strong>/teleprompter/{"{id}"}/home</strong> - Moves the teleprompter to its home position
+                    <strong>/teleprompter/{@render point('id')}/home</strong> - Moves the teleprompter to its home position
                 </li>
                 <li>
                     <strong>/system_reboot</strong> - Shutdown the raspberry pi and reboots it
@@ -150,7 +155,7 @@
                     <strong>/reboot_osc</strong> - Restarts the OSC server
                 </li>
                 <li>
-                    <strong>/lectern/manual_speed/{"{speed}"}</strong> - Set the manual speed of the lectern in % of max motor speed (0 to 1)
+                    <strong>/lectern/manual_speed/{@render point('speed')}</strong> - Set the manual speed of the lectern in % of max motor speed (0 to 1)
                 </li>
             </ul>
         </div>

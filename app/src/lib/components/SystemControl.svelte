@@ -86,22 +86,22 @@
             color: BootstrapColor.INFO,
             disabled: !$system.connected,
         },
-        ...$show.presets.map(p => ({
-            name: p.name + ' (' + p.state.height + ')',
-            action: async () => {
-                if (!await confirm(`Go to ${p.name}?`)) return;
-                // send('go_to', p.state.height);
-                // send('preset', show.id + '.' + p.id);
-                OSC.Lectern.goTo(p.state.height + offset);
-            },
-            color: BootstrapColor.SECONDARY,
-            disabled: !$system.connected,
-            contextmenu: (e: Event) => {
-                e.preventDefault();
-                currentPreset = p;
-                modal.show();
-            },
-        })),
+        // ...$show.presets.map(p => ({
+        //     name: p.name + ' (' + p.state.height + ')',
+        //     action: async () => {
+        //         // if (!await confirm(`Go to ${p.name}?`)) return;
+        //         // send('go_to', p.state.height);
+        //         // send('preset', show.id + '.' + p.id);
+        //         OSC.Lectern.goTo(p.state.height + offset);
+        //     },
+        //     color: BootstrapColor.SECONDARY,
+        //     disabled: !$system.connected,
+        //     contextmenu: (e: Event) => {
+        //         e.preventDefault();
+        //         currentPreset = p;
+        //         modal.show();
+        //     },
+        // })),
         {
             name: 'Add Preset', 
             action: async () => {
@@ -138,13 +138,20 @@
             name: 'Calibrate',
             action: async () => {
                 if (await confirm('Run calibration? (This will lock the system until the calibration is complete)')) {
-                    // send('calibrate', undefined)
                     OSC.Lectern.calibrate();
                 }
             },
             color: BootstrapColor.WARNING,
             disabled: !$system.connected,
         },
+        {
+            name: 'Home',
+            action: () => {
+                TCP.Lectern.home();
+            },
+            color: BootstrapColor.SECONDARY,
+            disabled: !$system.connected,
+        }
         // {
         //     name: 'Shutdown',
         //     action: async () => {
@@ -246,7 +253,7 @@
     </div>
 </div>
 
-<Modal 
+<!-- <Modal 
 bind:this={modal}
     title="Edit Preset"
 >
@@ -295,4 +302,4 @@ bind:this={modal}
             Save
         </button>
     {/snippet}
-</Modal>
+</Modal> -->

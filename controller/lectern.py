@@ -31,7 +31,7 @@ def clear():
 MAX_SPEED = .5
 ACCEL_RATE = 0.08 # Acceleration rate
 SPEED_TOLERANCE = 0.05
-POS_TOLERANCE = .25
+POS_TOLERANCE = .1
 SLOW_DOWN_DISTANCE = 2
 LIMIT_SLOW_DOWN_DISTANCE = 3
 LIMIT_SLOW_DOWN_SPEED = 0.1
@@ -158,8 +158,8 @@ class CalibrationState(Enum):
 
 class Calibration:
     def __init__(self):
-        self.top = 20
-        self.bottom = 6
+        self.top = 19.2
+        self.bottom = 6.3
         self.velocity = 5.354 * MAX_SPEED # in/s at 100% velocity
 
 class Lectern:
@@ -171,7 +171,7 @@ class Lectern:
         self.calibration_state = CalibrationState.DONE
         self.state = SYSTEM_STATE.STAND_BY
         self.tick_speed = config['tick_speed']
-        self.pid = PID(kp=0.7, ki=0.01, kd=0.2)
+        self.pid = PID(kp=0.65, ki=0.02, kd=0.1)
 
         self.global_state = GlobalState.STARTUP
         self.leds = {
@@ -260,7 +260,7 @@ class Lectern:
         self.estimated_speed = velocity
 
     def home(self):
-        self.go_to(self.calibration.bottom + LOWER_POSITION_OFFSET)
+        self.go_to(self.calibration.bottom)
 
     def print_state(self):
         clear()
@@ -421,6 +421,7 @@ class Lectern:
         self.set_speed(-0.3)
         await asyncio.sleep(1)
         self.set_speed(0)
+        self.global_state = GlobalState.RUNNING
 
     async def event_loop(self):
         start_power = None

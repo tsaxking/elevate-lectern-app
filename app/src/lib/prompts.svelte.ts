@@ -250,6 +250,26 @@ export const confirm = async (message: string, config?: ConfirmConfig) => {
     return new Promise<boolean>((res, rej) => {
         if (!target) return rej("Cannot show confirm in non-browser environment");
 
+        const onkey = (e: KeyboardEvent) => {
+            switch (e.key) {
+                case 'y':
+                case 'Y':
+                case 'Enter':
+                    res(true);
+                    modal.hide();
+                    break;
+                case 'n':
+                case 'N':
+                case 'Escape':
+                    res(false);
+                    modal.hide();
+                    break;
+            }
+
+            document.removeEventListener('keydown', onkey);
+        }
+
+
         const modal = mount(Modal, {
             target,
             props: {
@@ -279,6 +299,11 @@ export const confirm = async (message: string, config?: ConfirmConfig) => {
 
         modal.once('hide', () => res(false));
         modal.once('hide', clear);
+        modal.once('hide', () => {
+            document.removeEventListener('keydown', onkey);
+        });
+
+        document.addEventListener('keydown', onkey);
     });
 };
 

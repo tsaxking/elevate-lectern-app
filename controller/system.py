@@ -107,7 +107,7 @@ class System:
             asyncio.create_task(self.lectern.reboot())
             return
         if command.args[0] == "home":
-            self.lectern.home()
+            asyncio.create_task(self.lectern.home())
             return
 
     async def handle_teleprompter_tcp_command(self, command: Q.System_Command):
@@ -115,17 +115,31 @@ class System:
 
     async def handle_tcp_command(self, command: Q.System_Command):
         print(f"Running TCP command: {command.args} for {command.who}")
+        if command.who == "lectern":
+            await self.handle_lectern_tcp_command(command)
+            return
+        if command.who == "teleprompter":
+            await self.handle_teleprompter_tcp_command(command)
+            return
         if command.args[0] == "system_reboot":
             print("Rebooting system...")
             self.reboot()
-        elif command.args[0] == "system_shutdown":
+            return
+        if command.args[0] == "system_shutdown":
             print("Shutting down system...")
             self.shutdown()
-        elif command.args[0] == "reboot_tcp":
+            return
+        if command.args[0] == "reboot_tcp":
             print("Rebooting Lectern TCP...")
-        elif command.args[0] == "reboot_osc":
+            return
+        if command.args[0] == "reboot_osc":
             print("Rebooting OSC...")
-            self.osc.restart()
+            # self.osc.restart()
+            return
+        
+        asyncio.create_task(self.handle_teleprompter_tcp_command(command))
+        asyncio.create_task(self.handle_lectern_tcp_command(command))
+        
 
     def kill_processes(self):
         self.lectern.shutdown()
@@ -205,20 +219,22 @@ class System:
                     calibration=self.lectern.calibration.__dict__,
                     speed_multiplier=round(self.lectern.speed_multiplier, lectern.SIG_FIGS)
                 )
+                payload = json.dumps(state).encode('utf-8')
+
+                self.socket.sendto(
+                    payload,
+                    ('localhost', self.udp_port)
+                )
+                for client in self.tcp.clients:
+                    # print(f"Sending UDP state to {client.address}")
+                    self.socket.sendto(
+                        payload,
+                        # client.address
+                        (client.address[0], self.udp_port)
+                    )
             except Exception as e:
                 print(f"Error creating UDP state: {e}")
 
-            payload = json.dumps(state).encode('utf-8')
-
-            self.socket.sendto(
-                payload,
-                ('localhost', self.udp_port)
-            )
-            for client in self.tcp.clients:
-                self.socket.sendto(
-                    payload,
-                    client.address
-                )
             await asyncio.sleep(self.emit_tick_speed / 1000)
 
     async def stop(self):

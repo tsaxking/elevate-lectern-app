@@ -25,7 +25,8 @@ class TOF:
             return utils.cm_to_in(value / 10)
         data = utils.remove_outliers_zscore(self.points, 3)
         avg = np.average(data)
-        return utils.cm_to_in(avg / 10)
+        # return round(utils.cm_to_in(avg / 10) / 0.25) * 0.25 if not np.isnan(avg) else 0
+        return utils.cm_to_in(avg / 10) if not np.isnan(avg) else 0
 
     def cleanup(self):
         print('Cleaning up TOF')

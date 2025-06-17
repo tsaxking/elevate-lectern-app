@@ -5,6 +5,7 @@
     import CommandMonitor from '$lib/components/CommandMonitor.svelte';
 	import ShowBanner from "$lib/components/ShowBanner.svelte";
 	import { onMount } from "svelte";
+    import CueTable from "$lib/components/CueTable.svelte";
 	import { Color } from "$lib/colors/color.js";
 
     const { data } = $props();
@@ -26,23 +27,15 @@
     <ShowBanner {show} />
     <div class="container-fluid p-3 height py-0 w-100 no-scroll-x">
         <div class="row h-100">
-            <div class="col-lg-7 col-md-12">
-                <div class="container-fluid m-0 p-0">
-                    <div class="row mb-2">
-                        <SystemMonitor />
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-6 m-0 p-1">
-                            <Sensors />
-                        </div>
-                        <div class="col-6 m-0 p-1">
-                            <CommandMonitor {show} />
-                        </div>
-                    </div>
-                </div>
+            <div class="col-md-5">
+                <CueTable bind:show={show} />
             </div>
-            <div class="col-lg-5 col-md-12 h-100 px-1">
+            <div class="col-md-3">
                 <SystemControl bind:show={show} />
+            </div>
+            <div class="col-md-4">
+                <SystemMonitor />
+                <Sensors />
             </div>
         </div>
     </div>
